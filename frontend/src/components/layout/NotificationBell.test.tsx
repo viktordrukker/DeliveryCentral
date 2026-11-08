@@ -38,7 +38,7 @@ const buildNotification = (overrides: Partial<{
   eventType: 'assignment.approved',
   title: 'Assignment approved',
   body: null,
-  link: '/assignments/asgn-1',
+  link: '/projects/prj-1?position=asgn-1',
   readAt: null,
   createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
   ...overrides,

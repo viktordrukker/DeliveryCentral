@@ -208,6 +208,30 @@ Primary testing and architecture docs:
 - [Monitoring and logging](docs/infra/monitoring.md)
 - [Observability integration](docs/infra/observability-integration.md)
 
+## Bundle size gate
+
+Total gzipped JS shipped by the Vite production build is gated on every PR
+against a committed baseline in `scripts/bundle-size-baseline.json`. The
+default tolerance is +15%. A PR that breaches the budget fails the
+`bundle-size-check` workflow.
+
+Commands:
+
+```bash
+# After `npm --prefix frontend run build`, measure the current bundle and
+# compare against the baseline.
+npm run bundle-size:check
+
+# Refresh the baseline (opt-in — only when an intentional regression is
+# approved). Re-runs the measurement and rewrites the JSON.
+npm --prefix frontend run build
+npm run bundle-size:baseline
+git add scripts/bundle-size-baseline.json
+```
+
+The baseline was first measured against `main` at the start of the design-system
+redesign so that subsequent UI work cannot quietly inflate ship weight.
+
 ## Docker deployment guide
 
 For the full localhost deployment flow, env reference, troubleshooting, and reset guidance, see [localhost Docker deployment](docs/deployment/localhost-docker.md).

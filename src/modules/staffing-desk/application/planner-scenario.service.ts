@@ -130,11 +130,15 @@ export class PlannerScenarioService {
     return this.get(created.id);
   }
 
-  public async update(id: string, dto: UpdatePlannerScenarioDto): Promise<PlannerScenarioDetailDto> {
+  public async update(
+    id: string,
+    dto: UpdatePlannerScenarioDto,
+    actorId?: string | null,
+  ): Promise<PlannerScenarioDetailDto> {
     const existing = await this.prisma.plannerScenario.findUnique({ where: { id }, select: { id: true, archivedAt: true } });
     if (!existing || existing.archivedAt) throw new NotFoundException(`Scenario ${id} not found`);
 
-    const data: Record<string, unknown> = {};
+    const data: Record<string, unknown> = { updatedByPersonId: actorId ?? null };
     if (dto.name !== undefined) data.name = dto.name;
     if (dto.description !== undefined) data.description = dto.description;
     if (dto.state !== undefined) data.state = dto.state as object;
@@ -148,11 +152,14 @@ export class PlannerScenarioService {
     return this.get(id);
   }
 
-  public async archive(id: string): Promise<{ archived: boolean }> {
+  public async archive(id: string, actorId?: string | null): Promise<{ archived: boolean }> {
     const existing = await this.prisma.plannerScenario.findUnique({ where: { id }, select: { id: true, archivedAt: true } });
     if (!existing) throw new NotFoundException(`Scenario ${id} not found`);
     if (existing.archivedAt) return { archived: true };
-    await this.prisma.plannerScenario.update({ where: { id }, data: { archivedAt: new Date() } });
+    await this.prisma.plannerScenario.update({
+      where: { id },
+      data: { archivedAt: new Date(), updatedByPersonId: actorId ?? null },
+    });
     return { archived: true };
   }
 }

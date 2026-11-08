@@ -1,11 +1,12 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useParams, useSearchParams } from 'react-router-dom';
 
 import {
   ADMIN_ONLY_ROLES,
   ALL_ROLES,
   ADMIN_ROLES,
   appRoutes,
+  BENCH_PAGE_ROLES,
   CAPITALISATION_ROLES,
   CASE_CREATE_ROLES,
   DELIVERY_DASHBOARD_ROLES,
@@ -18,11 +19,13 @@ import {
   HR_DASHBOARD_ROLES,
   HR_DIRECTOR_ADMIN_ROLES,
   MANAGEMENT_ROLES,
+  MONITORING_ROLES,
   PM_DASHBOARD_ROLES,
   PROJECT_CREATE_ROLES,
-  RESOURCE_POOL_ROLES,
   RM_DASHBOARD_ROLES,
+  RESOURCE_POOL_ROLES,
   STAFFING_DESK_ROLES,
+  STAFFING_REQUEST_DETAIL_ROLES,
   APPROVALS_ROLES,
   TIMESHEET_MANAGER_ROLES,
   WORKLOAD_ROLES,
@@ -48,18 +51,21 @@ import { SettingsPage } from '@/routes/admin/SettingsPage';
 import { DictionariesPage } from '@/routes/admin/DictionariesPage';
 import { IntegrationsAdminPage } from '@/routes/admin/IntegrationsAdminPage';
 import { IntegrationsRegistryPage } from '@/routes/admin/IntegrationsRegistryPage';
+import { SsoAdminPage } from '@/routes/admin/SsoAdminPage';
 import { MonitoringPage } from '@/routes/admin/MonitoringPage';
 import { NotificationsPage } from '@/routes/admin/NotificationsPage';
 import { WebhooksAdminPage } from '@/routes/admin/WebhooksAdminPage';
 import { HrisConfigPage } from '@/routes/admin/HrisConfigPage';
 import { AccessPoliciesPage } from '@/routes/admin/AccessPoliciesPage';
 import { RolePermissionAdminPage } from '@/routes/admin/RolePermissionAdminPage';
+import { V2SoakChecklistPage } from '@/routes/admin/V2SoakChecklistPage';
 import { VendorRegistryPage } from '@/routes/admin/VendorRegistryPage';
-import { AssignmentDetailsPlaceholderPage } from '@/routes/assignments/AssignmentDetailsPlaceholderPage';
 import { CasesPage } from '@/routes/cases/CasesPage';
 import { CaseDetailsPage } from '@/routes/cases/CaseDetailsPage';
 import { CreateCasePage } from '@/routes/cases/CreateCasePage';
-import { DashboardPage } from '@/routes/dashboard/DashboardPage';
+// W4-03 — DashboardPage is now code-split inside HomeRedirect (the only
+// consumer); the legacy Workload Overview bundle is fetched lazily under the
+// dsRefresh-OFF branch and never loads under dsRefresh ON.
 import { DashboardRedirect } from '@/routes/DashboardRedirect';
 import { HomeRedirect } from '@/routes/HomeRedirect';
 import { V2Redirect } from '@/routes/V2Redirect';
@@ -84,6 +90,7 @@ import { ResponsibilityMatrixAdminPage } from '@/routes/admin/ResponsibilityMatr
 import { RateCardsAdminPage } from '@/routes/admin/RateCardsAdminPage';
 import { HelpAdminPage } from '@/routes/admin/HelpAdminPage';
 import { LeavePolicyAdminPage } from '@/routes/admin/LeavePolicyAdminPage';
+import { CustomRoleAdminPage } from '@/routes/admin/CustomRoleAdminPage';
 import { HelpArticleListPage } from '@/routes/help/HelpArticleListPage';
 import { HelpArticleDetailPage } from '@/routes/help/HelpArticleDetailPage';
 import { TeamsPage } from '@/routes/teams/TeamsPage';
@@ -121,9 +128,23 @@ function ProjectDashboardRedirect(): JSX.Element {
   const tab = isFeatureEnabled('dsRefresh') ? 'pulse' : 'radiator';
   return <Navigate to={`/projects/${id ?? ''}?tab=${tab}`} replace />;
 }
+
+// Wave 1 / W1-21 — legacy `/assignments/new` (interim ProjectAssignment flow)
+// is superseded by the lean ProjectPosition flow at `/staffing-requests/new`.
+// Preserves the `projectId` query param so deep-links from project detail
+// continue to pre-select the project on the create form.
+function AssignmentsNewRedirect(): JSX.Element {
+  const [params] = useSearchParams();
+  const projectId = params.get('projectId');
+  const target = projectId
+    ? `/staffing-requests/new?projectId=${encodeURIComponent(projectId)}`
+    : '/staffing-requests/new';
+  return <Navigate to={target} replace />;
+}
 const TeamDashboardPage = lazy(() => import('@/routes/teams/TeamDashboardPage').then(m => ({ default: m.TeamDashboardPage })));
 const StaffingDeskPage = lazy(() => import('@/routes/staffing-desk/StaffingDeskPage').then(m => ({ default: m.StaffingDeskPage })));
 const CreatePositionPage = lazy(() => import('@/routes/staffing-desk/CreatePositionPage').then(m => ({ default: m.CreatePositionPage })));
+const BulkCreatePositionsPage = lazy(() => import('@/routes/staffing-desk/BulkCreatePositionsPage').then(m => ({ default: m.BulkCreatePositionsPage })));
 const ReportsPage = lazy(() => import('@/routes/reports/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const UtilizationPage = lazy(() => import('@/routes/reports/UtilizationPage').then(m => ({ default: m.UtilizationPage })));
 const ReportBuilderPage = lazy(() => import('@/routes/reports/ReportBuilderPage').then(m => ({ default: m.ReportBuilderPage })));
@@ -156,9 +177,13 @@ const dashboardChildren = [
     path: 'dashboard/manager',
   },
   {
+    // SoT PR 3 — /dashboard/exec was redirecting to /dashboard/director under
+    // dsRefresh, which leaked a flag-gated (dashDirector default-off) surface.
+    // V2 users now land on the unified /me workspace; legacy users still get
+    // the ExecDashboardPage when dsRefresh is off.
     element: (
       <RoleGuard allowedRoles={['director', 'admin', 'hr_manager', 'project_manager', 'resource_manager', 'delivery_manager']}>
-        <V2Redirect to="/dashboard/director"><LazyPage><ExecDashboardPage /></LazyPage></V2Redirect>
+        <V2Redirect to="/me"><LazyPage><ExecDashboardPage /></LazyPage></V2Redirect>
       </RoleGuard>
     ),
     path: 'dashboard/exec',
@@ -167,32 +192,45 @@ const dashboardChildren = [
     element: <RoleGuard allowedRoles={EMPLOYEE_DASHBOARD_ROLES}><V2Redirect to="/me"><LazyPage><EmployeeDashboardPage /></LazyPage></V2Redirect></RoleGuard>,
     path: 'dashboard/employee',
   },
+  // SoT PR 3 — per-role dashboards are flag-gated (navVisible:false in the
+  // manifest). Wrap each in FeatureGuard so direct-URL access also enforces
+  // the flag — otherwise the surfaces are reachable despite being hidden.
   {
-    element: <RoleGuard allowedRoles={PM_DASHBOARD_ROLES}><LazyPage><ProjectManagerDashboardPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={PM_DASHBOARD_ROLES}><FeatureGuard flag="dashProjectManager"><LazyPage><ProjectManagerDashboardPage /></LazyPage></FeatureGuard></RoleGuard>,
     path: 'dashboard/project-manager',
   },
   {
-    element: <RoleGuard allowedRoles={RM_DASHBOARD_ROLES}><LazyPage><ResourceManagerDashboardPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={RM_DASHBOARD_ROLES}><FeatureGuard flag="dashResourceManager"><LazyPage><ResourceManagerDashboardPage /></LazyPage></FeatureGuard></RoleGuard>,
     path: 'dashboard/resource-manager',
   },
   {
-    element: <RoleGuard allowedRoles={HR_DASHBOARD_ROLES}><LazyPage><HrDashboardPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={HR_DASHBOARD_ROLES}><FeatureGuard flag="dashHr"><LazyPage><HrDashboardPage /></LazyPage></FeatureGuard></RoleGuard>,
     path: 'dashboard/hr',
   },
   {
-    element: <RoleGuard allowedRoles={DELIVERY_DASHBOARD_ROLES}><LazyPage><DeliveryManagerDashboardPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={DELIVERY_DASHBOARD_ROLES}><FeatureGuard flag="dashDeliveryManager"><LazyPage><DeliveryManagerDashboardPage /></LazyPage></FeatureGuard></RoleGuard>,
     path: 'dashboard/delivery-manager',
   },
   {
-    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><LazyPage><DirectorDashboardPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><FeatureGuard flag="dashDirector"><LazyPage><DirectorDashboardPage /></LazyPage></FeatureGuard></RoleGuard>,
     path: 'dashboard/director',
   },
+  // W1-01 — short-form dashboard aliases for muscle-memory URLs.
+  { element: <Navigate to="/dashboard/delivery-manager" replace />, path: 'dashboard/dm' },
+  { element: <Navigate to="/dashboard/project-manager" replace />, path: 'dashboard/pm' },
+  { element: <Navigate to="/dashboard/resource-manager" replace />, path: 'dashboard/rm' },
   {
     element: <RoleGuard allowedRoles={APPROVALS_ROLES}><LazyPage><ApprovalsPage /></LazyPage></RoleGuard>,
     path: 'approvals',
   },
+  // W1-04 — /approvals/queue is a legacy URL; redirect to the canonical
+  // unified queue at /approvals.
+  { element: <Navigate to="/approvals" replace />, path: 'approvals/queue' },
   {
-    element: <RoleGuard allowedRoles={DELIVERY_DASHBOARD_ROLES}><V2Redirect to="/dashboard/director"><PortfolioRadiatorPage /></V2Redirect></RoleGuard>,
+    // SoT PR 3 — was redirecting to /dashboard/director under dsRefresh,
+    // which leaked the flag-gated (dashDirector default-off) surface. Route
+    // V2 users to /me instead.
+    element: <RoleGuard allowedRoles={DELIVERY_DASHBOARD_ROLES}><V2Redirect to="/me"><PortfolioRadiatorPage /></V2Redirect></RoleGuard>,
     path: 'dashboards/portfolio-radiator',
   },
   {
@@ -200,7 +238,15 @@ const dashboardChildren = [
     path: 'admin/radiator-thresholds',
   },
   {
-    element: <RoleGuard allowedRoles={ADMIN_ROLES}><ResponsibilityMatrixAdminPage /></RoleGuard>,
+    // W4-11 — legacy direct route redirects to the consolidated governance
+    // tabbed shell when dsRefresh is ON; otherwise renders the standalone page.
+    element: (
+      <RoleGuard allowedRoles={ADMIN_ROLES}>
+        <V2Redirect to="/admin/governance/roles?tab=responsibility-matrix">
+          <ResponsibilityMatrixAdminPage />
+        </V2Redirect>
+      </RoleGuard>
+    ),
     path: 'admin/responsibility-matrix',
   },
   {
@@ -210,6 +256,10 @@ const dashboardChildren = [
   {
     element: <RoleGuard allowedRoles={ADMIN_ROLES}><LeavePolicyAdminPage /></RoleGuard>,
     path: 'admin/leave-policies',
+  },
+  {
+    element: <RoleGuard allowedRoles={ADMIN_ROLES}><CustomRoleAdminPage /></RoleGuard>,
+    path: 'admin/governance/roles',
   },
   {
     element: <RoleGuard allowedRoles={ADMIN_ROLES}><HelpAdminPage /></RoleGuard>,
@@ -228,7 +278,11 @@ const dashboardChildren = [
     path: 'admin/organization-config',
   },
   { element: <LazyPage><OrgPage /></LazyPage>, path: 'org' },
-  { element: <ManagerScopePage />, path: 'org/managers/:id/scope' },
+  // W1-27 — wrap in RoleGuard. BE `ManagerScopeController` is guarded by
+  // `@RequireRoles(...ALL_MANAGER_ROLES)` + `@AllowSelfScope({ param: 'id' })`
+  // so employees can hit their own scope; FE keeps `ALL_ROLES` so a self-scope
+  // call by an employee isn't blocked at the FE before the BE self-scope check.
+  { element: <RoleGuard allowedRoles={ALL_ROLES}><ManagerScopePage /></RoleGuard>, path: 'org/managers/:id/scope' },
   {
     // F-11.1 / D-86 — `/admin/people/new` is a legacy alias of `/people/new`.
     // Both rendered the same `EmployeeLifecycleAdminPage`; consolidating
@@ -260,7 +314,10 @@ const dashboardChildren = [
   // redirect to the canonical project-positions surfaces (staffing desk,
   // approvals queue).
   { element: <Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace />, path: 'assignments' },
-  { element: <Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace />, path: 'assignments/new' },
+  // W1-21 — legacy /assignments/new redirects to the lean ProjectPosition
+  // create form, preserving any projectId query param from project-detail
+  // deep-links.
+  { element: <AssignmentsNewRedirect />, path: 'assignments/new' },
   { element: <Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace />, path: 'assignments/bulk' },
   { element: <Navigate to="/approvals" replace />, path: 'assignments/queue' },
   // Lean canonical: both /assignments/:id and /staffing-requests/:id route
@@ -282,6 +339,18 @@ const dashboardChildren = [
     ),
     path: 'me',
   },
+  // W1-02 — short-form /me/:tab aliases redirect into the workspace shell
+  // (?tab=...) so deep-linked URLs from email / docs / chat resolve cleanly.
+  // `/me/cases` resolves outside the shell to the canonical HR queue.
+  { element: <Navigate to="/me?tab=overview" replace />, path: 'me/overview' },
+  { element: <Navigate to="/me?tab=time" replace />, path: 'me/time' },
+  { element: <Navigate to="/me?tab=leave" replace />, path: 'me/leave' },
+  { element: <Navigate to="/me?tab=projects" replace />, path: 'me/projects' },
+  { element: <Navigate to="/me?tab=skills" replace />, path: 'me/skills' },
+  { element: <Navigate to="/me?tab=inbox" replace />, path: 'me/inbox' },
+  { element: <Navigate to="/me?tab=settings" replace />, path: 'me/profile' },
+  { element: <Navigate to="/me?tab=settings" replace />, path: 'me/settings' },
+  { element: <Navigate to="/cases" replace />, path: 'me/cases' },
   {
     element: <RoleGuard allowedRoles={RESOURCE_POOL_ROLES}><ResourcePoolsPage /></RoleGuard>,
     path: 'resource-pools',
@@ -310,10 +379,19 @@ const dashboardChildren = [
   },
   { element: <MyTimePage />, path: 'my-time' },
   {
-    element: <RoleGuard allowedRoles={TIMESHEET_MANAGER_ROLES}><TimeManagementPage /></RoleGuard>,
+    // W1-22 — legacy /time-management is absorbed into the unified
+    // /approvals queue under dsRefresh. The page still renders pre-flag
+    // so OFF-flag tenants retain the manager timesheet approval surface.
+    element: (
+      <RoleGuard allowedRoles={TIMESHEET_MANAGER_ROLES}>
+        <V2Redirect to="/approvals"><TimeManagementPage /></V2Redirect>
+      </RoleGuard>
+    ),
     path: 'time-management',
   },
-  { element: <Navigate to="/my-time" replace />, path: 'timesheets' },
+  // W3-12 — /timesheets retargets to /me?tab=time when dsRefresh is ON.
+  // Off-flag tenants keep the legacy /my-time redirect.
+  { element: <V2Redirect to="/me?tab=time"><Navigate to="/my-time" replace /></V2Redirect>, path: 'timesheets' },
   { element: <RoleGuard allowedRoles={TIMESHEET_MANAGER_ROLES}><Navigate to="/time-management" replace /></RoleGuard>, path: 'timesheets/approval' },
   { element: <LeaveRequestPage />, path: 'leave' },
   {
@@ -347,7 +425,10 @@ const dashboardChildren = [
   // Sprint 2 / S2-8 — lean staffing aggregate skeleton pages.
   { element: <RoleGuard allowedRoles={ALL_ROLES}><PositionsListPage /></RoleGuard>, path: 'projects/:projectId/positions' },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectPositionDetailPage /></RoleGuard>, path: 'projects/:projectId/positions/:positionId' },
-  { element: <RoleGuard allowedRoles={RESOURCE_POOL_ROLES}><BenchPage /></RoleGuard>, path: 'people/bench' },
+  // W1-25 — FE/BE alignment: BE `/people/bench` is guarded by STAFFING_ROLES
+  // (PM+RM+DM+director+admin). FE was RESOURCE_POOL_ROLES (RM+director+admin)
+  // which hid the surface from PM/DM despite BE accepting them.
+  { element: <RoleGuard allowedRoles={BENCH_PAGE_ROLES}><BenchPage /></RoleGuard>, path: 'people/bench' },
   // LEAN-P2 exit-gate: /staffing-board is now a redirect-only path. RBAC is
   // enforced at the canonical /staffing-desk destination — keep this entry
   // permissive (matches manifest ALL_ROLES) so redirects always resolve.
@@ -364,8 +445,16 @@ const dashboardChildren = [
   // canonical aggregate directly — no interim ProjectAssignment.
   { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><CreatePositionPage /></LazyPage></RoleGuard>, path: 'staffing-requests/new' },
   { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><CreatePositionPage /></LazyPage></RoleGuard>, path: 'staffing-desk/positions/new' },
+  // W2-05 — bulk "open multiple positions at once" surface. Complements the
+  // single-position CreatePositionPage and the BulkReassignPanel (existing-
+  // position reassignment) shipped in issue 542. PM/RM JTBD: stand up a
+  // whole project team in one pass.
+  { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><BulkCreatePositionsPage /></LazyPage></RoleGuard>, path: 'staffing-requests/bulk' },
   // Lean canonical: /staffing-requests/:id renders the unified ProjectPositionDetailPage.
-  { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectPositionDetailPage /></RoleGuard>, path: 'staffing-requests/:id' },
+  // W1-23 — FE/BE alignment: BE `StaffingRequestsController` is guarded by
+  // `@RequireRoles(...STAFFING_ROLES)` (PM+RM+DM+director+admin). FE was
+  // permissive (`ALL_ROLES`) which let employees hit a forbidden surface.
+  { element: <RoleGuard allowedRoles={STAFFING_REQUEST_DETAIL_ROLES}><ProjectPositionDetailPage /></RoleGuard>, path: 'staffing-requests/:id' },
   {
     element: <RoleGuard allowedRoles={CASE_CREATE_ROLES}><CreateCasePage /></RoleGuard>,
     path: 'cases/new',
@@ -399,7 +488,14 @@ const dashboardChildren = [
     path: 'admin/integrations/registry',
   },
   {
-    element: <RoleGuard allowedRoles={ADMIN_ONLY_ROLES}><MonitoringPage /></RoleGuard>,
+    // NEW-LGL-2 — bank-ops self-serve SSO configuration.
+    element: <RoleGuard allowedRoles={ADMIN_ONLY_ROLES}><SsoAdminPage /></RoleGuard>,
+    path: 'admin/integrations/sso',
+  },
+  {
+    // W1-26 — widen to director so executives can observe platform health.
+    // Page is read-only — no write actions, no credentials exposed.
+    element: <RoleGuard allowedRoles={MONITORING_ROLES}><MonitoringPage /></RoleGuard>,
     path: 'admin/monitoring',
   },
   {
@@ -449,7 +545,15 @@ const dashboardChildren = [
     path: 'admin/vendors',
   },
   {
-    element: <RoleGuard allowedRoles={ADMIN_ROLES}><AccessPoliciesPage /></RoleGuard>,
+    // W4-11 — legacy direct route redirects to the consolidated governance
+    // tabbed shell when dsRefresh is ON; otherwise renders the standalone page.
+    element: (
+      <RoleGuard allowedRoles={ADMIN_ROLES}>
+        <V2Redirect to="/admin/governance/roles?tab=access-policies">
+          <AccessPoliciesPage />
+        </V2Redirect>
+      </RoleGuard>
+    ),
     path: 'admin/access-policies',
   },
   {
@@ -461,6 +565,19 @@ const dashboardChildren = [
       </RoleGuard>
     ),
     path: 'admin/access-policies/edit',
+  },
+  {
+    // MANUAL-CLICK-THROUGH-30 — admin V2 soak click-through checklist.
+    // Gated by `dsRefresh` because the matrix only matters during the
+    // staging soak that precedes the C0 cutover flip.
+    element: (
+      <RoleGuard allowedRoles={ADMIN_ROLES}>
+        <FeatureGuard flag="dsRefresh">
+          <V2SoakChecklistPage />
+        </FeatureGuard>
+      </RoleGuard>
+    ),
+    path: 'admin/v2-soak-checklist',
   },
 ];
 

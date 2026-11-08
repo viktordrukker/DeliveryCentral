@@ -88,6 +88,7 @@ export function OrgPage(): JSX.Element {
               ? 'No people matched the current search.'
               : 'No org chart nodes matched the current search.'}
             title="No org chart results"
+            action={{ href: '/people', label: 'Browse all people' }}
           />
         ) : (
           <div className="org-chart-viewport">

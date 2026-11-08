@@ -7,6 +7,12 @@
  */
 export interface BenchEnrichedRowDto {
   personId: string;
+  /**
+   * W1-09 (issue 564) — opaque tenant-scoped identifier (`usr_…`). Prefer this
+   * for URL routing so the raw UUID does not leak into the browser. Null for
+   * legacy rows that have not yet been backfilled.
+   */
+  personPublicId: string | null;
   name: string;
   role: string;
   office: string | null;
@@ -16,6 +22,10 @@ export interface BenchEnrichedRowDto {
   daysOnBench: number;
   /** 80 minus scheduled hours over the next 14 calendar days. */
   availabilityHours14d: number;
-  /** Suggested next projects (empty in v1; populated when matching engine wires in). */
+  /**
+   * Top-N suggested project IDs for this bench person, computed by
+   * SuggestFillsService.suggestForPerson at request time (W2-06). Empty
+   * when no OPEN positions match (or when no project-positions exist).
+   */
   suggestedProjectIds: string[];
 }

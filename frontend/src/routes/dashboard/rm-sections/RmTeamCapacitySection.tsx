@@ -20,11 +20,11 @@ export function RmTeamCapacitySection({
       title="Team Capacity by Org Unit"
       collapsible
       chartExport={{
-        headers: ['Team', 'Members', 'Active Assignments', 'Active Projects', 'Overallocated', 'Unassigned'],
+        headers: ['Team', 'Members', 'Active Positions', 'Active Projects', 'Overallocated', 'Unassigned'],
         rows: rows.map((t) => ({
           Team: t.teamName,
           Members: String(t.memberCount),
-          'Active Assignments': String(t.activeAssignmentCount),
+          'Active Positions': String(t.activeAssignmentCount),
           'Active Projects': String(t.activeProjectCount),
           Overallocated: String(t.overallocatedPeopleCount),
           Unassigned: String(t.unassignedPeopleCount),
@@ -50,7 +50,7 @@ export function RmTeamCapacitySection({
             },
             {
               key: 'assignments',
-              title: 'Assignments',
+              title: 'Positions',
               align: 'right',
               getValue: (t) => t.activeAssignmentCount,
               render: (t) => <span style={NUM}>{t.activeAssignmentCount}</span>,

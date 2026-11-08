@@ -35,6 +35,8 @@ export interface PeriodLock {
   periodFrom: string;
   periodTo: string;
   lockedBy: string;
+  lockedByDisplayName: string | null;
+  lockedByPublicId: string | null;
   lockedAt: string;
 }
 

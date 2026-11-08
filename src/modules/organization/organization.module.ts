@@ -5,12 +5,12 @@ import { AuditLoggerService } from '../audit-observability/application/audit-log
 import { CaseManagementModule } from '../case-management/case-management.module';
 import { CreateCaseService } from '../case-management/application/create-case.service';
 import { CaseTypeKey } from '../case-management/domain/entities/case-type.entity';
-import { ResponsibilityResolverService } from '../identity-access/application/responsibility-resolver.service';
-import { AssignmentsModule } from '../assignments/assignments.module';
 import { NotificationEventTranslatorService } from '../notifications/application/notification-event-translator.service';
 import { NotificationsModule } from '../notifications/notifications.module';
-import { EndProjectAssignmentService } from '../assignments/application/end-project-assignment.service';
-import { InMemoryProjectAssignmentRepository } from '../assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
+import { PROJECT_POSITION_REPOSITORY } from '../project-positions/application/tokens';
+import { TransitionProjectPositionFillService } from '../project-positions/application/transition-project-position-fill.service';
+import { ProjectPositionRepositoryPort } from '../project-positions/domain/repositories/project-position-repository.port';
+import { ProjectPositionsModule } from '../project-positions/project-positions.module';
 import { ProjectRegistryModule } from '../project-registry/project-registry.module';
 import { InMemoryProjectRepository } from '../project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
 import { WorkEvidenceModule } from '../work-evidence/work-evidence.module';
@@ -25,9 +25,7 @@ import { DeactivateEmployeeService } from './application/deactivate-employee.ser
 import { PersonDeactivateUndoExecutor } from './application/person-deactivate-undo.executor';
 import { UndoActionExecutorRegistry } from '@src/modules/undo/application/undo-action-executor.registry';
 import { UndoService } from '@src/modules/undo/application/undo.service';
-import { DecidePersonReleaseService } from './application/decide-person-release.service';
 import { EmployeeActivityService } from './application/employee-activity.service';
-import { OpenPersonReleaseRequestService } from './application/open-person-release-request.service';
 import { TerminateEmployeeService } from './application/terminate-employee.service';
 import { ManagerScopeQueryService } from './application/manager-scope-query.service';
 import { OrgChartQueryService } from './application/org-chart-query.service';
@@ -49,14 +47,13 @@ import { ManagerScopeController } from './presentation/manager-scope.controller'
 import { OrganizationController } from './presentation/organization.controller';
 import { OrgChartController } from './presentation/org-chart.controller';
 import { PersonDirectoryController } from './presentation/person-directory.controller';
-import { PersonReleaseRequestController } from './presentation/person-release-request.controller';
 import { ReportingLinesController } from './presentation/reporting-lines.controller';
 import { TeamsController } from './presentation/teams.controller';
 
 @Module({
   imports: [
-    forwardRef(() => AssignmentsModule),
     forwardRef(() => ProjectRegistryModule),
+    ProjectPositionsModule,
     WorkEvidenceModule,
     NotificationsModule,
     CaseManagementModule,
@@ -66,7 +63,6 @@ import { TeamsController } from './presentation/teams.controller';
     ManagerScopeController,
     OrgChartController,
     OrganizationController,
-    PersonReleaseRequestController,
     ReportingLinesController,
     TeamsController,
   ],
@@ -137,7 +133,7 @@ import { TeamsController } from './presentation/teams.controller';
         personDirectoryQueryService: PersonDirectoryQueryService,
         teamStore: TeamStorePort,
         orgUnitRepository: InMemoryOrgUnitRepository,
-        projectAssignmentRepository: InMemoryProjectAssignmentRepository,
+        projectPositionRepository: ProjectPositionRepositoryPort,
         projectRepository: InMemoryProjectRepository,
         workEvidenceRepository: InMemoryWorkEvidenceRepository,
         appConfig: AppConfig,
@@ -146,7 +142,7 @@ import { TeamsController } from './presentation/teams.controller';
           personDirectoryQueryService,
           teamStore,
           orgUnitRepository,
-          projectAssignmentRepository,
+          projectPositionRepository,
           projectRepository,
           workEvidenceRepository,
           appConfig,
@@ -155,7 +151,7 @@ import { TeamsController } from './presentation/teams.controller';
         PersonDirectoryQueryService,
         TeamStorePort,
         InMemoryOrgUnitRepository,
-        InMemoryProjectAssignmentRepository,
+        PROJECT_POSITION_REPOSITORY,
         InMemoryProjectRepository,
         InMemoryWorkEvidenceRepository,
         AppConfig,
@@ -261,16 +257,16 @@ import { TeamsController } from './presentation/teams.controller';
       provide: TerminateEmployeeService,
       useFactory: (
         personRepository: InMemoryPersonRepository,
-        projectAssignmentRepository: InMemoryProjectAssignmentRepository,
-        endProjectAssignmentService: EndProjectAssignmentService,
+        projectPositionRepository: ProjectPositionRepositoryPort,
+        transitionProjectPositionFillService: TransitionProjectPositionFillService,
         auditLogger: AuditLoggerService,
         notificationEventTranslator: NotificationEventTranslatorService,
         employeeActivityService: EmployeeActivityService,
       ) =>
         new TerminateEmployeeService(
           personRepository,
-          projectAssignmentRepository,
-          endProjectAssignmentService,
+          projectPositionRepository,
+          transitionProjectPositionFillService,
           auditLogger,
           notificationEventTranslator,
           // Sprint F-0.4 — wired so TERMINATED activity events fire (was silent).
@@ -278,8 +274,8 @@ import { TeamsController } from './presentation/teams.controller';
         ),
       inject: [
         InMemoryPersonRepository,
-        InMemoryProjectAssignmentRepository,
-        EndProjectAssignmentService,
+        PROJECT_POSITION_REPOSITORY,
+        TransitionProjectPositionFillService,
         AuditLoggerService,
         NotificationEventTranslatorService,
         EmployeeActivityService,
@@ -303,51 +299,6 @@ import { TeamsController } from './presentation/teams.controller';
       useFactory: (reportingLineRepository: InMemoryReportingLineRepository) =>
         new TerminateReportingLineService(reportingLineRepository),
       inject: [InMemoryReportingLineRepository],
-    },
-    {
-      provide: OpenPersonReleaseRequestService,
-      useFactory: (
-        personRepository: InMemoryPersonRepository,
-        prisma: PrismaService,
-        auditLogger: AuditLoggerService,
-        notificationEventTranslator: NotificationEventTranslatorService,
-        responsibilityResolver: ResponsibilityResolverService,
-      ) =>
-        new OpenPersonReleaseRequestService(
-          personRepository,
-          prisma,
-          auditLogger,
-          notificationEventTranslator,
-          responsibilityResolver,
-        ),
-      inject: [
-        InMemoryPersonRepository,
-        PrismaService,
-        AuditLoggerService,
-        NotificationEventTranslatorService,
-        ResponsibilityResolverService,
-      ],
-    },
-    {
-      provide: DecidePersonReleaseService,
-      useFactory: (
-        prisma: PrismaService,
-        auditLogger: AuditLoggerService,
-        notificationEventTranslator: NotificationEventTranslatorService,
-        responsibilityResolver: ResponsibilityResolverService,
-      ) =>
-        new DecidePersonReleaseService(
-          prisma,
-          auditLogger,
-          notificationEventTranslator,
-          responsibilityResolver,
-        ),
-      inject: [
-        PrismaService,
-        AuditLoggerService,
-        NotificationEventTranslatorService,
-        ResponsibilityResolverService,
-      ],
     },
     EmployeeActivityService,
     {

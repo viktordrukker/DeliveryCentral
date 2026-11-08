@@ -4,7 +4,13 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
 import { UpdateHrisConfigRequestDto } from '../application/contracts/update-hris-config.request';
-import { HrisConfig, HrisSyncResult, HrisSyncService } from '../application/hris-sync.service';
+import {
+  HrisConfig,
+  HrisSyncResult,
+  HrisSyncService,
+  HrisTestConnectionResult,
+} from '../application/hris-sync.service';
+import { HrisTestConnectionResponseDto } from '../contracts/hris-test-connection-response.contract';
 
 @ApiTags('hris')
 @Controller('admin/hris')
@@ -39,5 +45,20 @@ export class HrisController {
   @ApiOkResponse({ description: 'Sync result.' })
   public async runSync(): Promise<HrisSyncResult> {
     return this.hrisSyncService.runSync();
+  }
+
+  @Post('test')
+  @HttpCode(HttpStatus.OK)
+  @RequireRoles('admin')
+  @ApiOperation({
+    summary:
+      'Probe the HRIS adapter reachability without mutating internal employees — returns latency and any error.',
+  })
+  @ApiOkResponse({
+    type: HrisTestConnectionResponseDto,
+    description: 'HRIS connection probe result.',
+  })
+  public async testConnection(): Promise<HrisTestConnectionResult> {
+    return this.hrisSyncService.testConnection();
   }
 }

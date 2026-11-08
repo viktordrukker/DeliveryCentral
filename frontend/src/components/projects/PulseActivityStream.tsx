@@ -8,11 +8,11 @@ interface PulseActivityStreamProps {
   activity: PulseActivityItem[];
 }
 
-type Filter = 'all' | 'assignments' | 'risks' | 'cr' | 'milestones' | 'override';
+type Filter = 'all' | 'positions' | 'risks' | 'cr' | 'milestones' | 'override';
 
 const FILTERS: Array<{ key: Filter; label: string; types: string[] | null }> = [
   { key: 'all', label: 'All', types: null },
-  { key: 'assignments', label: 'Assignments', types: ['ProjectAssignment'] },
+  { key: 'positions', label: 'Positions', types: ['ProjectPosition', 'ProjectAssignment'] },
   { key: 'risks', label: 'Risks', types: ['ProjectRisk'] },
   { key: 'cr', label: 'Change req.', types: ['ProjectChangeRequest'] },
   { key: 'milestones', label: 'Milestones', types: ['ProjectMilestone'] },
@@ -20,7 +20,7 @@ const FILTERS: Array<{ key: Filter; label: string; types: string[] | null }> = [
 ];
 
 function iconFor(aggregateType: string): string {
-  if (aggregateType === 'ProjectAssignment') return '👥';
+  if (aggregateType === 'ProjectAssignment' || aggregateType === 'ProjectPosition') return '👥';
   if (aggregateType === 'ProjectRisk') return '⚠';
   if (aggregateType === 'ProjectChangeRequest') return '✎';
   if (aggregateType === 'ProjectMilestone') return '◆';

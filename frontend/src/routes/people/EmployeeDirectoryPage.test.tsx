@@ -24,6 +24,12 @@ vi.mock('@/lib/api/resource-pools', () => ({
   fetchResourcePools: vi.fn(),
 }));
 
+// W3-05 — FilterBar now loads departments from the org-chart endpoint.
+const fetchOrgChartMock = vi.fn();
+vi.mock('@/lib/api/org-chart', () => ({
+  fetchOrgChart: (...args: unknown[]) => fetchOrgChartMock(...args),
+}));
+
 // V2-B.18 — gated chrome. Default falsy keeps the existing tests on the legacy
 // (flag-off) path. The bench effect only fires under dsRefresh; stub it.
 const isFeatureEnabledMock = vi.fn();
@@ -50,6 +56,8 @@ describe('EmployeeDirectoryPage', () => {
     isFeatureEnabledMock.mockReturnValue(false);
     fetchEnrichedBenchMock.mockResolvedValue([]);
     fetchSidebarCountsMock.mockResolvedValue({ projects: 0, approvals: 0, bench: 0, hrQueue: 0 });
+    fetchOrgChartMock.mockReset();
+    fetchOrgChartMock.mockResolvedValue({ roots: [], dottedLineRelationships: [] });
   });
 
   it('shows loading state', () => {

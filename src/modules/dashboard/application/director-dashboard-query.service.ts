@@ -1,11 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { InMemoryOrgUnitRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/in-memory-org-unit.repository';
 import { InMemoryPersonOrgMembershipRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/in-memory-person-org-membership.repository';
 import { InMemoryPersonRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/in-memory-person.repository';
 import { OrgUnitId } from '@src/modules/organization/domain/value-objects/org-unit-id';
 import { InMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
 import { countBench as canonicalCountBench } from '@src/shared/persistence/bench-query';
+import {
+  loadAllPositionAssignmentViews,
+  PositionAssignmentView,
+} from '@src/shared/persistence/position-assignment-view';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { DirectorDashboardResponseDto } from './contracts/director-dashboard.dto';
@@ -14,6 +17,10 @@ interface DirectorDashboardQuery {
   asOf?: string;
 }
 
+// SoT PR 14b — re-point onto the canonical `ProjectPosition` aggregate via
+// the shared assignment-view helper. The view exposes the same accessor
+// shape the legacy domain entity exposed, so existing per-week trend / unit
+// utilisation logic is unchanged.
 @Injectable()
 export class DirectorDashboardQueryService {
   public constructor(
@@ -21,7 +28,6 @@ export class DirectorDashboardQueryService {
     private readonly orgUnitRepository: InMemoryOrgUnitRepository,
     private readonly personOrgMembershipRepository: InMemoryPersonOrgMembershipRepository,
     private readonly projectRepository: InMemoryProjectRepository,
-    private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -36,7 +42,7 @@ export class DirectorDashboardQueryService {
       this.personRepository.listAll(),
       this.orgUnitRepository.listAll(),
       this.projectRepository.findAll(),
-      this.projectAssignmentRepository.findAll(),
+      loadAllPositionAssignmentViews(this.prisma),
     ]);
 
     const activePeople = allPeople.filter(
@@ -140,7 +146,7 @@ export class DirectorDashboardQueryService {
   private buildWeeklyTrend(
     asOf: Date,
     allProjects: Awaited<ReturnType<typeof this.projectRepository.findAll>>,
-    allAssignments: Awaited<ReturnType<typeof this.projectAssignmentRepository.findAll>>,
+    allAssignments: PositionAssignmentView[],
     activePeopleCount: number,
   ): { weekStarting: string; activeProjectCount: number; staffedPersonCount: number; staffingUtilisationRate: number }[] {
     const weeks: { weekStarting: string; activeProjectCount: number; staffedPersonCount: number; staffingUtilisationRate: number }[] = [];

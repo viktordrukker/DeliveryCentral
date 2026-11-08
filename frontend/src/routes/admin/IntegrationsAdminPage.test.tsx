@@ -62,7 +62,9 @@ describe('IntegrationsAdminPage', () => {
     expect(screen.getByRole('button', { name: /M365/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /RADIUS/i })).toBeInTheDocument();
     expect(screen.getAllByText(/[Cc]onfigured/).length).toBeGreaterThan(0);
-    expect(screen.getByText('succeeded')).toBeInTheDocument();
+    // Status Overview now renders the last-outcome through StatusBadge,
+    // which humanises "succeeded" to "Succeeded".
+    expect(screen.getAllByText(/[Ss]ucceeded/).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Created 1, updated 2.').length).toBeGreaterThan(0);
     expect(screen.getByText('Recent Sync Runs')).toBeInTheDocument();
     expect(await screen.findByText('Jira project sync completed successfully.')).toBeInTheDocument();

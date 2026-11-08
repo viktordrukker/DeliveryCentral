@@ -191,4 +191,65 @@ describe('IntegrationsRegistryService (F-8.1 / NEW C1-INT-FRAMEWORK)', () => {
     expect(jsm.status).toBe('degraded');
     expect(jsm.lastSyncSummary).toContain('jsm down');
   });
+
+  describe('testConnection (W2-10 — JSM / LDAP / LLM remediation parity)', () => {
+    it('returns reachable=true with latency for JSM when configured + reachable', async () => {
+      const svc = new IntegrationsRegistryService(
+        stubJira('not_configured'),
+        stubM365('not_configured'),
+        stubRadius('not_configured'),
+        stubJsm({ configured: true, reachable: true }),
+        undefined,
+        undefined,
+      );
+      const result = await svc.testConnection('jsm');
+      expect(result.reachable).toBe(true);
+      expect(result.latencyMs).toBe(42);
+      expect(result.provider).toBe('jsm');
+    });
+
+    it('returns reachable=false for LDAP when configured but unreachable', async () => {
+      const svc = new IntegrationsRegistryService(
+        stubJira('not_configured'),
+        stubM365('not_configured'),
+        stubRadius('not_configured'),
+        undefined,
+        stubLdap({ configured: true, reachable: false }),
+        undefined,
+      );
+      const result = await svc.testConnection('ldap');
+      expect(result.reachable).toBe(false);
+      expect(result.latencyMs).toBeNull();
+      expect(result.provider).toBe('ldap');
+    });
+
+    it('returns reachable=true with latency for LLM when configured + reachable', async () => {
+      const svc = new IntegrationsRegistryService(
+        stubJira('not_configured'),
+        stubM365('not_configured'),
+        stubRadius('not_configured'),
+        undefined,
+        undefined,
+        stubLlm({ configured: true, reachable: true }),
+      );
+      const result = await svc.testConnection('llm');
+      expect(result.reachable).toBe(true);
+      expect(result.latencyMs).toBe(88);
+      expect(result.provider).toBe('llm');
+    });
+
+    it('returns errorMessage when the adapter is not wired', async () => {
+      const svc = new IntegrationsRegistryService(
+        stubJira('not_configured'),
+        stubM365('not_configured'),
+        stubRadius('not_configured'),
+        undefined,
+        undefined,
+        undefined,
+      );
+      const result = await svc.testConnection('jsm');
+      expect(result.reachable).toBe(false);
+      expect(result.errorMessage).toContain('not wired');
+    });
+  });
 });

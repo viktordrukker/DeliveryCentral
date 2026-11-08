@@ -15,6 +15,10 @@ export interface TimelineAssignment {
 
 export interface StaffingDeskRow {
   id: string;
+  // W1-11 — opaque ProjectPosition publicId (`pos_…`) for deep-linking from
+  // the desk drawer into the position detail page. Null when no
+  // ProjectPosition has backfilled the legacy id this row originated from.
+  positionPublicId: string | null;
   kind: StaffingDeskRowKind;
   projectId: string;
   projectName: string;

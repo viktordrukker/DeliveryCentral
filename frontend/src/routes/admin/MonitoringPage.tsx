@@ -10,6 +10,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import { MonitoringAdminData, useMonitoringAdmin } from '@/features/admin/useMonitoringAdmin';
 import { formatDateTime } from '@/lib/format-date';
 import { Button, Pct } from '@/components/ds';
@@ -99,8 +100,15 @@ export function MonitoringPage(): JSX.Element {
                       </p>
                       <ul style={{ listStyle: 'none', margin: 0, padding: 0, fontSize: '13px' }}>
                         {checks.map((c) => (
-                          <li key={c.label} style={{ color: c.ok ? 'var(--color-status-active)' : 'var(--color-status-danger)', padding: '2px 0' }}>
-                            {c.ok ? '✓' : '✗'} {c.label}
+                          <li key={c.label} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 0' }}>
+                            <StatusBadge
+                              tone={c.ok ? 'active' : 'danger'}
+                              variant="dot"
+                              label=""
+                              title={c.ok ? 'Healthy' : 'Failing'}
+                            />
+                            <span className="sr-only">{c.ok ? 'Healthy:' : 'Failing:'}</span>
+                            <span>{c.label}</span>
                           </li>
                         ))}
                       </ul>

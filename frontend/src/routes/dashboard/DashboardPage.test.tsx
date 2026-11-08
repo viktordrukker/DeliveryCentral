@@ -66,6 +66,22 @@ describe('DashboardPage', () => {
 
     expect(await screen.findByText('Dashboard unavailable')).toBeInTheDocument();
   });
+
+  // W3-12 — DashboardPage names the canonical /staffing-desk path for
+  // unstaffed-project action items. Must not link to legacy /staffing-requests.
+  it('links unstaffed-project action items to canonical /staffing-desk', async () => {
+    mockedFetchWorkloadDashboardSummary.mockResolvedValue(buildWorkloadDashboardSummary());
+
+    renderWithRouter();
+
+    await screen.findByText('Active Projects');
+    const links = screen.getAllByRole('link', { name: /view/i });
+    const hrefs = links.map((a) => a.getAttribute('href') ?? '');
+    const targets = hrefs.filter((h) => h.startsWith('/staffing-desk') || h.startsWith('/staffing-requests'));
+    expect(targets.length).toBeGreaterThan(0);
+    expect(targets.every((h) => h.startsWith('/staffing-desk'))).toBe(true);
+    expect(targets.some((h) => h.includes('projectId='))).toBe(true);
+  });
 });
 
 function renderWithRouter() {

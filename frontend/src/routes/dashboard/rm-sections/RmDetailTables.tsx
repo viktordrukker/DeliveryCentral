@@ -195,7 +195,7 @@ export function RmFuturePipelineTable({
               width: 40,
               render: (i) => (
                 <Link
-                  to={`/assignments/${i.assignmentId}`}
+                  to={`/projects/${i.projectId}?position=${i.assignmentId}`}
                   onClick={(e) => e.stopPropagation()}
                   style={{ fontSize: 10, color: 'var(--color-accent)' }}
                 >
@@ -207,7 +207,7 @@ export function RmFuturePipelineTable({
         }
         rows={rows}
         getRowKey={(i) => i.assignmentId}
-        onRowClick={(i) => navigate(`/assignments/${i.assignmentId}`)}
+        onRowClick={(i) => navigate(`/projects/${i.projectId}?position=${i.assignmentId}`)}
       />
     </SectionCard>
   );

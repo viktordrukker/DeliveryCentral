@@ -3,12 +3,20 @@ import { httpGet, httpPost } from './http-client';
 export interface PersonSummary {
   displayName: string;
   id: string;
+  /**
+   * Opaque tenant-scoped public identifier shipped by W1-07/W1-08
+   * (publicId foundation PR). Nullable for rows not yet backfilled.
+   * Use for display + URL deep-links where supported; raw `id` remains
+   * the wire-format value services consume.
+   */
+  publicId?: string | null;
 }
 
 export interface OrgUnitSummary {
   code: string;
   id: string;
   name: string;
+  publicId?: string | null;
 }
 
 export interface PersonDirectoryItem {
@@ -20,6 +28,7 @@ export interface PersonDirectoryItem {
   grade: string | null;
   hiredAt: string | null;
   id: string;
+  publicId?: string | null;
   lifecycleStatus: string;
   primaryEmail: string | null;
   resourcePoolIds: string[];

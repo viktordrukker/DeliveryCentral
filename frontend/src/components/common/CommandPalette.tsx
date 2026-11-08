@@ -157,10 +157,10 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
     {
       group: 'Actions',
       id: 'action-create-assignment',
-      label: 'Create Assignment',
-      sublabel: 'Create a new staffing assignment',
+      label: 'Create Position',
+      sublabel: 'Create a new project position',
       onSelect: () => {
-        navigate('/assignments/new');
+        navigate('/staffing-desk?openCreatePosition=true');
         onClose();
       },
     },
@@ -178,9 +178,9 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
       group: 'Actions',
       id: 'action-approve-requests',
       label: 'Approve Requests',
-      sublabel: 'Review pending staffing requests',
+      sublabel: 'Review pending positions',
       onSelect: () => {
-        navigate('/staffing-requests');
+        navigate('/staffing-desk');
         onClose();
       },
     },
@@ -197,10 +197,10 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
     {
       group: 'Actions',
       id: 'action-create-staffing-request',
-      label: 'Create Staffing Request',
-      sublabel: 'Request staffing for a project',
+      label: 'Create Position',
+      sublabel: 'Create a new project position',
       onSelect: () => {
-        navigate('/staffing-requests/new');
+        navigate('/staffing-desk?openCreatePosition=true');
         onClose();
       },
     },
@@ -242,12 +242,12 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
   }));
 
   const assignmentItems: CommandItem[] = assignments.map((assignment) => ({
-    group: 'Assignments',
+    group: 'Positions',
     id: `assignment-${assignment.id}`,
     label: `${assignment.person.displayName} · ${assignment.project.displayName}`,
     sublabel: `${assignment.staffingRole} · ${assignment.allocationPercent}%`,
     onSelect: () => {
-      navigate(`/assignments/${assignment.id}`);
+      navigate(`/projects/${assignment.project.id}?position=${assignment.id}`);
       onClose();
     },
   }));

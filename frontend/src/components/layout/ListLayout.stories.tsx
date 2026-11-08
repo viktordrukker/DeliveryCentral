@@ -37,7 +37,7 @@ const COLUMNS: Column<Project>[] = [
   { key: 'code', title: 'Code', width: 120, getValue: (r) => r.code },
   { key: 'name', title: 'Project', getValue: (r) => r.name, render: (r) => <strong>{r.name}</strong> },
   { key: 'status', title: 'Status', width: 100, getValue: (r) => r.status },
-  { key: 'count', title: 'Assignments', width: 110, align: 'right', getValue: (r) => r.assignmentCount },
+  { key: 'count', title: 'Positions', width: 110, align: 'right', getValue: (r) => r.assignmentCount },
 ];
 
 export const Basic: Story = () => {

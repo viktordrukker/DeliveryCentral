@@ -78,6 +78,8 @@ const mockLocks: PeriodLock[] = [
     periodFrom: '2026-01-01',
     periodTo: '2026-01-31',
     lockedBy: 'admin-1',
+    lockedByDisplayName: 'Admin User',
+    lockedByPublicId: 'usr_admin1',
     lockedAt: '2026-02-01T00:00:00.000Z',
   },
 ];
@@ -99,6 +101,8 @@ describe('CapitalisationPage', () => {
       periodFrom: '2026-02-01',
       periodTo: '2026-02-28',
       lockedBy: 'admin-1',
+      lockedByDisplayName: 'Admin User',
+      lockedByPublicId: 'usr_admin1',
       lockedAt: '2026-03-01T00:00:00.000Z',
     });
     mockedDeleteLock.mockResolvedValue(undefined);
@@ -229,5 +233,37 @@ describe('CapitalisationPage', () => {
     expect(screen.getByTestId('kpi-capex-pct')).toHaveTextContent('CAPEX %');
     // One project has alert=true → counter should be 1.
     expect(screen.getByTestId('kpi-alerts')).toHaveTextContent('1');
+  });
+
+  it('renders every KPI as a clickable drilldown link (UX Law 9, W3-06)', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('kpi-capex')).toBeInTheDocument();
+    });
+
+    // Hours-based KPIs link to approved timesheets filtered by report period.
+    const hoursHrefPattern = /^\/timesheets\/approval\?status=APPROVED&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}$/;
+
+    for (const id of ['kpi-capex', 'kpi-opex', 'kpi-total', 'kpi-capex-pct']) {
+      const kpi = screen.getByTestId(id);
+      expect(kpi.tagName).toBe('A');
+      expect(kpi.getAttribute('href')).toMatch(hoursHrefPattern);
+    }
+
+    // Deviation Alerts links to the exceptions queue.
+    const alertsKpi = screen.getByTestId('kpi-alerts');
+    expect(alertsKpi.tagName).toBe('A');
+    expect(alertsKpi).toHaveAttribute('href', '/exceptions');
+  });
+
+  it('no longer renders a dead PDF export button (W3-06)', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Atlas ERP')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Export PDF' })).not.toBeInTheDocument();
   });
 });

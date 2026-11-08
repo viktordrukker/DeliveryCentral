@@ -35,17 +35,22 @@ export class SuggestFillsService {
   public constructor(private readonly prisma: PrismaService) {}
 
   public async suggestForPosition(
-    positionId: string,
+    idOrPublicId: string,
     limit: number = DEFAULT_LIMIT,
     asOf: Date = new Date(),
   ): Promise<PositionCandidatesResponseDto> {
+    // W1-11 — accept both legacy uuid and `pos_…` publicId.
+    const where = /^pos_[A-Za-z0-9]{10,}$/.test(idOrPublicId)
+      ? { publicId: idOrPublicId }
+      : { id: idOrPublicId };
     const position = await this.prisma.projectPosition.findUnique({
-      where: { id: positionId },
+      where,
       select: { id: true, role: true, skills: true },
     });
     if (!position) {
-      throw new NotFoundException(`Project position ${positionId} not found`);
+      throw new NotFoundException(`Project position ${idOrPublicId} not found`);
     }
+    const positionId = position.id;
 
     const requiredSkills = position.skills ?? [];
 
@@ -154,6 +159,7 @@ export class SuggestFillsService {
       where: { fillStatus: 'OPEN' },
       select: {
         id: true,
+        publicId: true,
         projectId: true,
         role: true,
         skills: true,
@@ -167,6 +173,7 @@ export class SuggestFillsService {
       const s = SuggestFillsService.score(required, pos.role, personSkills, person.role);
       return {
         positionId: pos.id,
+        positionPublicId: pos.publicId ?? null,
         projectId: pos.projectId,
         projectName: pos.project?.name ?? '',
         role: pos.role,

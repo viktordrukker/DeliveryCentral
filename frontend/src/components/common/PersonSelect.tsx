@@ -3,6 +3,11 @@ import { useEffect, useState } from 'react';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import { FormField, Select } from '@/components/ds';
 
+interface PersonOption {
+  displayName: string;
+  id: string;
+}
+
 interface PersonSelectProps {
   id?: string;
   label: string;
@@ -10,19 +15,28 @@ interface PersonSelectProps {
   required?: boolean;
   roleFilter?: string[];
   value: string;
-}
-
-interface PersonOption {
-  displayName: string;
-  id: string;
+  /**
+   * Optional caller-supplied people list. When provided, the internal
+   * `fetchPersonDirectory` call is skipped — consumers like dashboard
+   * title bars that already maintain a role-scoped people list pass it
+   * straight through to avoid a duplicate network round-trip and to
+   * preserve their server-side role filter.
+   */
+  people?: PersonOption[];
 }
 
 /**
- * Phase DS-3-3 — public API unchanged. Internally now composes
- * <FormField> + the DS <Select> atom (token-driven, mobile-friendly,
- * theme-aware). Native <select required> semantics preserved so HTML5
- * form validation still fires; switching to <Combobox> (typeahead) is
- * a follow-up gated on consumers being OK with the UX change.
+ * Phase DS-3-3 — public API unchanged for default usage. Internally
+ * composes <FormField> + the DS <Select> atom (token-driven,
+ * mobile-friendly, theme-aware). Native <select required> semantics
+ * preserved so HTML5 form validation still fires; switching to
+ * <Combobox> (typeahead) is a follow-up gated on consumers being OK
+ * with the UX change.
+ *
+ * W4-01 — added optional `people` prop so dashboard title bars (HR /
+ * PM / RM) can replace the legacy `<input>+<datalist>` typeahead with
+ * the DS primitive while keeping their pre-fetched, role-filtered
+ * people list.
  */
 export function PersonSelect({
   id,
@@ -30,18 +44,20 @@ export function PersonSelect({
   onChange,
   required,
   value,
+  people: peopleProp,
 }: PersonSelectProps): JSX.Element {
-  const [people, setPeople] = useState<PersonOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [fetchedPeople, setFetchedPeople] = useState<PersonOption[]>([]);
+  const [isLoading, setIsLoading] = useState(peopleProp === undefined);
 
   useEffect(() => {
+    if (peopleProp !== undefined) return;
     let active = true;
     setIsLoading(true);
 
     void fetchPersonDirectory({ page: 1, pageSize: 200 })
       .then((response) => {
         if (!active) return;
-        setPeople(
+        setFetchedPeople(
           response.items.map((item) => ({
             displayName: item.displayName,
             id: item.id,
@@ -58,7 +74,9 @@ export function PersonSelect({
     return () => {
       active = false;
     };
-  }, []);
+  }, [peopleProp]);
+
+  const people = peopleProp ?? fetchedPeople;
 
   return (
     <FormField label={label} required={required} id={id}>

@@ -53,6 +53,10 @@ Two ratcheting checkers gate every PR — see [`ds-conformance-ratchet.md`](ds-c
 - **`npm run tokens:check`** — raw-color guardrail. Update `scripts/design-token-baseline.json` with explicit justification when unavoidable.
 - **`npm run ds:check`** — DS conformance. 6 rules (3 ERROR-tier locked at zero, 3 WARNING-tier with baselines). Promotion to ERROR happens automatically once a baseline reaches zero.
 
+#### SetupWizard MUI-island carve-out (W5-08)
+
+The Setup Wizard surface at `frontend/src/routes/setup/**` (`SetupWizardPage`, all `screens/*` and `components/*`) is an intentional **MUI island** — it renders through raw `@mui/material` primitives instead of DS atoms because it predates the DS and runs before tenant context / auth is available. MUI's own theme provider supplies colors at runtime, so wizard `.tsx` files currently do **not** leak raw hex/rgba literals; the `entries` array in `scripts/design-token-baseline.json` is empty by design. If a future wizard change forces a raw color literal into a `.tsx` (e.g. an `sx={{ color: '#...' }}` prop), `frontend/src/routes/setup/...` is the scope allowed to be baselined under this carve-out, with a comment cross-referencing the wizard MUI carve-out in `design-token-baseline.json`. The carve-out terminates when the full DS re-skin lands (tracked as **V2-A.11a** in MASTER_TRACKER), at which point the wizard's MUI dependency is removed and this exception is deleted.
+
 ### Route manifest
 
 All role-gated routes must use constants from `@/app/route-manifest.ts`. No local role arrays.

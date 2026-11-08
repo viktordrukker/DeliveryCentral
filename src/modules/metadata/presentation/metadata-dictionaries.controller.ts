@@ -72,6 +72,30 @@ export class MetadataDictionariesController {
     return result;
   }
 
+  // W1-19 — key-based dictionary lookup so the FE never has to embed
+  // a hardcoded UUID. (entityType, dictionaryKey) is the natural key
+  // already enforced by `@@unique` on MetadataDictionary.
+  @Get('by-key/:entityType/:dictionaryKey')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
+  @ApiOperation({ summary: 'Get a metadata dictionary by (entityType, dictionaryKey). READ is open to all authenticated users.' })
+  @ApiOkResponse({ type: MetadataDictionaryDetailsDto })
+  @ApiNotFoundResponse({ description: 'Metadata dictionary not found.' })
+  public async getDictionaryByKey(
+    @Param('entityType') entityType: string,
+    @Param('dictionaryKey') dictionaryKey: string,
+  ): Promise<MetadataDictionaryDetailsDto> {
+    const result = await this.metadataDictionaryQueryService.getDictionaryByKey(
+      entityType,
+      dictionaryKey,
+    );
+
+    if (!result) {
+      throw new NotFoundException('Metadata dictionary not found.');
+    }
+
+    return result;
+  }
+
   @Post(':type/entries')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a metadata dictionary entry for a supported dictionary type' })

@@ -9,6 +9,10 @@
  */
 export interface TeamConflictPosition {
   positionId: string;
+  // W1-11 — opaque ProjectPosition publicId (`pos_…`) for deep-linking from
+  // the Director anomalies surface. Null until the foundation backfill
+  // covers legacy rows.
+  positionPublicId: string | null;
   projectId: string;
   projectCode: string;
   allocationPct: number;

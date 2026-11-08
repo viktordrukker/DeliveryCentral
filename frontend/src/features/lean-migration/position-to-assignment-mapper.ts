@@ -91,6 +91,16 @@ export function mapPositionToDirectoryItem(position: ProjectPosition): Assignmen
     position.activeValidFrom ?? position.startDate ?? '';
   const endDate =
     position.activeValidTo ?? position.endDate ?? null;
+  // W1-10 — prefer enriched display names from the BE projection. When the
+  // DTO carries `activePersonName` / `projectName` / `projectCode` (post
+  // D-103 round 40), surface them instead of the raw id placeholder. Callers
+  // that still need to back-fill names from /org/people/:id do so in their
+  // own effect (see TeamVendorsTab).
+  const personDisplayName = position.activePersonName ?? personId;
+  const projectDisplayName =
+    position.projectName ??
+    position.projectCode ??
+    position.projectId;
   return {
     id: position.id,
     allocationPercent: position.activeAllocationPercent ?? 0,
@@ -98,11 +108,11 @@ export function mapPositionToDirectoryItem(position: ProjectPosition): Assignmen
     endDate,
     person: {
       id: personId,
-      displayName: personId,
+      displayName: personDisplayName,
     },
     project: {
       id: position.projectId,
-      displayName: position.projectId,
+      displayName: projectDisplayName,
     },
     staffingRole: position.role,
     startDate,

@@ -93,8 +93,24 @@ describe('D-103 write-path — TimesheetWeek actor-audit (source-shape)', () => 
   it('monthly-service autoFill + copyPrevious: inline populate actor-audit cols on timesheetWeek.create', () => {
     expect(monthlySrc).toMatch(/createdByPersonId:\s*personId/);
     expect(monthlySrc).toMatch(/updatedByPersonId:\s*personId/);
-    // Two distinct insertion sites.
-    const matches = monthlySrc.match(/createdByPersonId:\s*personId/g);
-    expect(matches?.length).toBe(2);
+    // Two distinct timesheetWeek.create insertion sites — F-130 round 40
+    // also adds stamps to two timesheetEntry.upsert calls, so the broad
+    // `createdByPersonId: personId` regex now matches 4 places overall.
+    // The intent of this test is that BOTH week-create sites stamp; we
+    // verify by checking each method's slice independently.
+    const autoFillSection = monthlySrc.slice(
+      monthlySrc.indexOf('public async autoFill'),
+      monthlySrc.indexOf('public async copyPrevious'),
+    );
+    const copyPrevSection = monthlySrc.slice(
+      monthlySrc.indexOf('public async copyPrevious'),
+      monthlySrc.indexOf('private mondayOf'),
+    );
+    expect(autoFillSection).toMatch(/timesheetWeek\.create/);
+    expect(autoFillSection).toMatch(/createdByPersonId:\s*personId/);
+    expect(autoFillSection).toMatch(/updatedByPersonId:\s*personId/);
+    expect(copyPrevSection).toMatch(/timesheetWeek\.create/);
+    expect(copyPrevSection).toMatch(/createdByPersonId:\s*personId/);
+    expect(copyPrevSection).toMatch(/updatedByPersonId:\s*personId/);
   });
 });

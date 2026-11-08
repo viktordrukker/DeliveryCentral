@@ -40,7 +40,10 @@ const LIST_CARD_INCLUDE = Prisma.validator<Prisma.RateCardInclude>()({
 const CARD_WITH_ENTRIES_INCLUDE = Prisma.validator<Prisma.RateCardInclude>()({
   client: { select: { name: true } },
   entries: {
-    include: { _count: { select: { pinnedAssignments: true } } },
+    // LEAN PR 16a/2 — `pinnedAssignments` relation drops with the
+    // ProjectAssignment model in PR 16b; count via `pinnedPositionRelations`
+    // (the canonical ProjectPosition[] relation already on RateCardEntry).
+    include: { _count: { select: { pinnedPositionRelations: true } } },
     orderBy: [{ staffingRole: 'asc' }, { grade: 'asc' }],
   },
   _count: { select: { entries: true } },
@@ -51,7 +54,7 @@ type CardWithListInclude = Prisma.RateCardGetPayload<{ include: typeof LIST_CARD
 type CardWithEntriesRow = Prisma.RateCardGetPayload<{ include: typeof CARD_WITH_ENTRIES_INCLUDE }>;
 type EntryRow = Prisma.RateCardEntryGetPayload<Record<string, never>>;
 type EntryWithCountRow = Prisma.RateCardEntryGetPayload<{
-  include: { _count: { select: { pinnedAssignments: true } } };
+  include: { _count: { select: { pinnedPositionRelations: true } } };
 }>;
 
 @Injectable()
@@ -367,8 +370,11 @@ export class RateCardAdminService {
   }
 
   private toEntryResponse(r: EntryRow | EntryWithCountRow): RateCardEntryResponseDto {
+    // LEAN PR 16a/2 — count comes from the canonical ProjectPosition[]
+    // relation. The response DTO field name stays `pinnedAssignmentCount`
+    // for FE compatibility until PR 17.
     const pinnedAssignmentCount =
-      '_count' in r ? r._count?.pinnedAssignments ?? 0 : 0;
+      '_count' in r ? r._count?.pinnedPositionRelations ?? 0 : 0;
     return {
       id: r.id,
       rateCardId: r.rateCardId,

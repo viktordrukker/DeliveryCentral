@@ -40,24 +40,31 @@ export class BusinessAuditQueryService {
 
     const actorIds = [...new Set(items.map((r) => r.actorId).filter((id): id is string => Boolean(id)))];
     const dbPeople = actorIds.length > 0
-      ? await this.prisma.person.findMany({ select: { id: true, displayName: true }, where: { id: { in: actorIds } } })
+      ? await this.prisma.person.findMany({
+          select: { id: true, displayName: true, publicId: true },
+          where: { id: { in: actorIds } },
+        })
       : [];
-    const peopleById = new Map(dbPeople.map((p) => [p.id, p.displayName]));
+    const peopleById = new Map(dbPeople.map((p) => [p.id, p]));
 
     return {
-      items: items.map((record) => ({
-        actionType: record.actionType,
-        actorId: record.actorId ?? null,
-        actorDisplayName: record.actorId ? (peopleById.get(record.actorId) ?? null) : null,
-        changeSummary: record.changeSummary ?? null,
-        correlationId: record.correlationId ?? null,
-        metadata: record.metadata,
-        occurredAt: record.occurredAt,
-        targetEntityId: record.targetEntityId ?? null,
-        targetEntityType: record.targetEntityType,
-        oldValues: record.oldValues ?? null,
-        newValues: record.newValues ?? null,
-      })),
+      items: items.map((record) => {
+        const actor = record.actorId ? peopleById.get(record.actorId) : null;
+        return {
+          actionType: record.actionType,
+          actorId: record.actorId ?? null,
+          actorDisplayName: actor?.displayName ?? null,
+          actorPublicId: actor?.publicId ?? null,
+          changeSummary: record.changeSummary ?? null,
+          correlationId: record.correlationId ?? null,
+          metadata: record.metadata,
+          occurredAt: record.occurredAt,
+          targetEntityId: record.targetEntityId ?? null,
+          targetEntityType: record.targetEntityType,
+          oldValues: record.oldValues ?? null,
+          newValues: record.newValues ?? null,
+        };
+      }),
       page,
       pageSize,
       totalCount,

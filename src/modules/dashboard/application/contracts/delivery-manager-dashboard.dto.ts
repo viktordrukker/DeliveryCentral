@@ -79,6 +79,9 @@ class StaffingGapItemDto {
   public personId!: string;
 
   @ApiProperty()
+  public personName!: string;
+
+  @ApiProperty()
   public projectId!: string;
 
   @ApiProperty()

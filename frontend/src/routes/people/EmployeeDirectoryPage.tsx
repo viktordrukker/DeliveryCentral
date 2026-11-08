@@ -10,7 +10,6 @@ import { FilterBar } from '@/components/common/FilterBar';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
-import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { CopyLinkButton } from '@/components/common/CopyLinkButton';
@@ -22,13 +21,12 @@ import { bulkReassignOrgMembership } from '@/lib/api/organization';
 import { fetchOrgChart, OrgChartNode } from '@/lib/api/org-chart';
 import { fetchResourcePools, ResourcePool } from '@/lib/api/resource-pools';
 import { exportToXlsx } from '@/lib/export';
-import { HR_DIRECTOR_ADMIN_ROLES, PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { HR_ADMIN_ROLES, HR_DIRECTOR_ADMIN_ROLES, PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { Avatar, Button } from '@/components/ds';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { TabBar } from '@/components/common/TabBar';
 import { BenchEnrichedPanel } from '@/components/people/BenchEnrichedPanel';
 import { CasesPanel } from '@/components/cases/CasesPanel';
-import { LeaveApprovalsPanel } from '@/components/people/LeaveApprovalsPanel';
 import { PersonDirectoryInspector } from '@/components/people/PersonDirectoryInspector';
 import { fetchEnrichedBench } from '@/lib/api/people-bench';
 import { fetchSidebarCounts } from '@/lib/api/sidebar-counts';
@@ -40,6 +38,8 @@ export function EmployeeDirectoryPage(): JSX.Element {
   const { principal } = useAuth();
   const canManagePeople = hasAnyRole(principal?.roles, PEOPLE_MANAGE_ROLES);
   const canBulkReassign = hasAnyRole(principal?.roles, HR_DIRECTOR_ADMIN_ROLES);
+  // W3-05 — only HR/admin see HR Queue (leave approvals fold in as a sub-tab).
+  const canSeeHrActions = hasAnyRole(principal?.roles, HR_ADMIN_ROLES);
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   // V2-B.18 — `role` is server-side; `grade`/`groupBy`/`layout` are client-side
   // refinements over the loaded page (same page-local model as `search`).
@@ -48,6 +48,9 @@ export function EmployeeDirectoryPage(): JSX.Element {
   const [filters, setFilters] = useFilterParams({ departmentId: '', lifecycleStatus: 'ACTIVE', resourcePoolId: '', search: '', view: 'directory', role: '', grade: '', layout: 'list', groupBy: 'flat', selected: '' });
   const [page, setPage] = useState(1);
   const [resourcePools, setResourcePools] = useState<ResourcePool[]>([]);
+  // W3-05 — Department select options (flattened org chart). Replaces the
+  // legacy free-text "Department ID" input with a typed dropdown.
+  const [departmentOptions, setDepartmentOptions] = useState<Array<{ id: string; name: string }>>([]);
   // V2-A.12 — header count badge for people currently on the bench.
   const [benchCount, setBenchCount] = useState<number | null>(null);
   // V2-B.17 — HR-Queue tab count (the directory header already shows bench; do
@@ -135,6 +138,33 @@ export function EmployeeDirectoryPage(): JSX.Element {
 
   useEffect(() => {
     void fetchResourcePools().then((r) => setResourcePools(r.items));
+  }, []);
+
+  // W3-05 — load department options once for the FilterBar select.
+  useEffect(() => {
+    let active = true;
+    function flatten(nodes: OrgChartNode[]): Array<{ id: string; name: string }> {
+      const out: Array<{ id: string; name: string }> = [];
+      for (const node of nodes) {
+        out.push({ id: node.id, name: node.name });
+        if (node.children?.length) out.push(...flatten(node.children));
+      }
+      return out;
+    }
+    void fetchOrgChart()
+      .then((chart) => {
+        if (active) {
+          setDepartmentOptions(
+            flatten(chart.roots).sort((a, b) => a.name.localeCompare(b.name)),
+          );
+        }
+      })
+      .catch(() => {
+        if (active) setDepartmentOptions([]);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -232,24 +262,31 @@ export function EmployeeDirectoryPage(): JSX.Element {
   // V2-B.17 — HR-Queue tab carries a live count badge from sidebar-counts.
   // Bench tab count is intentionally omitted: the header already shows
   // "N on bench" (A12) and duplicating it on the tab would double-count.
+  // SoT PR 9 — HR Queue tab is gated to HR/Admin. Leave approvals were folded
+  // into HR Queue (DS canvas has Leave as a sub-tab inside HR Queue).
   const peopleTabs: { id: string; label: import('react').ReactNode }[] = [
     { id: 'directory', label: 'Directory' },
     { id: 'bench', label: 'Bench' },
-    {
-      id: 'cases',
-      label:
-        hrQueueCount != null && hrQueueCount > 0 ? (
-          <>
-            HR Queue{' '}
-            <span style={{ marginLeft: 4, fontVariantNumeric: 'tabular-nums', opacity: 0.8 }}>
-              ({hrQueueCount})
-            </span>
-          </>
-        ) : (
-          'HR Queue'
-        ),
-    },
-    { id: 'leave-approvals', label: 'Leave Approvals' },
+    ...(canSeeHrActions
+      ? [
+          {
+            id: 'cases',
+            label:
+              hrQueueCount != null && hrQueueCount > 0 ? (
+                <>
+                  HR Queue{' '}
+                  <span
+                    style={{ marginLeft: 4, fontVariantNumeric: 'tabular-nums', opacity: 0.8 }}
+                  >
+                    ({hrQueueCount})
+                  </span>
+                </>
+              ) : (
+                'HR Queue'
+              ),
+          },
+        ]
+      : []),
   ];
   const activeView = peopleTabs.some((t) => t.id === filters.view) ? filters.view : 'directory';
 
@@ -320,12 +357,21 @@ export function EmployeeDirectoryPage(): JSX.Element {
       ) : null}
       {dsRefreshEnabled && activeView === 'bench' ? <BenchEnrichedPanel /> : null}
       {dsRefreshEnabled && activeView === 'cases' ? <CasesPanel /> : null}
-      {dsRefreshEnabled && activeView === 'leave-approvals' ? <LeaveApprovalsPanel /> : null}
       {dsRefreshEnabled && activeView !== 'directory' ? null : (
       <>
       {dsRefreshEnabled && canBulkReassign && bulkPanelOpen ? (
-        <SectionCard title="Bulk reassign org unit">
-          <div data-testid="people-bulk-reassign-panel" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+        <div
+          data-testid="people-bulk-reassign-panel"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-3)',
+            padding: 'var(--space-3) var(--space-4)',
+            background: 'var(--color-accent-soft)',
+            border: '1px solid var(--color-accent)',
+            borderRadius: 'var(--radius-card)',
+          }}
+        >
             <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 13 }}>
               Select people below, choose the destination org unit and effective date, then confirm. The current membership closes the day before <code>effectiveFrom</code>; a new one opens on it.
             </p>
@@ -432,8 +478,7 @@ export function EmployeeDirectoryPage(): JSX.Element {
                 ) : null}
               </ul>
             </div>
-          </div>
-        </SectionCard>
+        </div>
       ) : null}
       <FilterBar>
         <label className="field">
@@ -447,14 +492,18 @@ export function EmployeeDirectoryPage(): JSX.Element {
           />
         </label>
         <label className="field">
-          <span className="field__label">Department ID</span>
-          <input
+          <span className="field__label">Department</span>
+          <select
             className="field__control"
-            onChange={(event) => setFilters({ departmentId: event.target.value })}
-            placeholder="Filter by department"
-            type="text"
+            onChange={(event) => { setFilters({ departmentId: event.target.value }); setPage(1); }}
             value={filters.departmentId}
-          />
+            data-testid="directory-department-filter"
+          >
+            <option value="">All departments</option>
+            {departmentOptions.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
         </label>
         <label className="field">
           <span className="field__label">Resource Pool</span>
@@ -586,7 +635,7 @@ export function EmployeeDirectoryPage(): JSX.Element {
             ) : !dsRefreshEnabled ? (
               <EmployeeDirectoryTable
                 items={state.visibleItems}
-                onRowClick={(item) => navigate(`/people/${item.id}`)}
+                onRowClick={(item) => navigate(`/people/${item.publicId ?? item.id}`)}
               />
             ) : filters.layout === 'grid' ? (
               /* V2-B.19 — grid/card layout */
@@ -602,7 +651,7 @@ export function EmployeeDirectoryPage(): JSX.Element {
                       {group.items.map((p) => (
                         <Link
                           key={p.id}
-                          to={`/people/${p.id}`}
+                          to={`/people/${p.publicId ?? p.id}`}
                           style={{
                             display: 'flex', alignItems: 'center', gap: 'var(--space-3)', textAlign: 'left',
                             padding: 'var(--space-3)', border: '1px solid var(--color-border)',
@@ -689,7 +738,7 @@ export function EmployeeDirectoryPage(): JSX.Element {
                     </h4>
                     <EmployeeDirectoryTable
                       items={group.items}
-                      onRowClick={(item) => navigate(`/people/${item.id}`)}
+                      onRowClick={(item) => navigate(`/people/${item.publicId ?? item.id}`)}
                     />
                   </div>
                 ))}

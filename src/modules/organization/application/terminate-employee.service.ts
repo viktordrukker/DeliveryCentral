@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
-import { EndProjectAssignmentService } from '@src/modules/assignments/application/end-project-assignment.service';
-import { ProjectAssignmentRepositoryPort } from '@src/modules/assignments/domain/repositories/project-assignment-repository.port';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
+import { PROJECT_POSITION_REPOSITORY } from '@src/modules/project-positions/application/tokens';
+import { TransitionProjectPositionFillService } from '@src/modules/project-positions/application/transition-project-position-fill.service';
+import { ProjectPositionRepositoryPort } from '@src/modules/project-positions/domain/repositories/project-position-repository.port';
 
 import { Person } from '../domain/entities/person.entity';
 import { PersonRepositoryPort } from '../domain/repositories/person-repository.port';
@@ -20,8 +21,9 @@ interface TerminateEmployeeCommand {
 export class TerminateEmployeeService {
   public constructor(
     private readonly personRepository: PersonRepositoryPort,
-    private readonly projectAssignmentRepository: ProjectAssignmentRepositoryPort,
-    private readonly endProjectAssignmentService: EndProjectAssignmentService,
+    @Inject(PROJECT_POSITION_REPOSITORY)
+    private readonly projectPositionRepository: ProjectPositionRepositoryPort,
+    private readonly transitionProjectPositionFillService: TransitionProjectPositionFillService,
     private readonly auditLogger?: AuditLoggerService,
     private readonly notificationEventTranslator?: NotificationEventTranslatorService,
     private readonly employeeActivityService?: { record(cmd: { personId: string; eventType: string; summary: string; actorId?: string; occurredAt?: Date; metadata?: Record<string, unknown> }): Promise<void> },
@@ -43,21 +45,22 @@ export class TerminateEmployeeService {
     employee.terminate(terminatedAt);
     await this.personRepository.save(employee);
 
-    // End all in-flight assignments (BOOKED, ONBOARDING, ASSIGNED, ON_HOLD).
-    const allAssignments = await this.projectAssignmentRepository.findAll();
-    const assignmentsToEnd = allAssignments.filter(
-      (a) =>
-        a.personId === command.personId &&
-        ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'].includes(a.status.value),
+    // SoT PR 16a/1 — release all active ProjectPosition fills held by this
+    // employee (sourced from the canonical position aggregate; replaces the
+    // legacy assignment iteration).
+    const activePositions = await this.projectPositionRepository.findActiveByPersonId(
+      command.personId,
+      terminatedAt,
     );
 
-    const endDateStr = terminatedAt.toISOString().slice(0, 10);
-    for (const assignment of assignmentsToEnd) {
-      await this.endProjectAssignmentService.execute({
+    const reason = command.reason ?? 'Employee terminated';
+    for (const position of activePositions) {
+      await this.transitionProjectPositionFillService.execute({
+        positionId: position.positionId.value,
+        toStatus: 'RELEASED',
         actorId: command.actorId ?? 'system',
-        assignmentId: assignment.assignmentId.value,
-        endDate: endDateStr,
-        reason: command.reason ?? 'Employee terminated',
+        actorRoles: ['admin'],
+        reason,
       });
     }
 
@@ -65,9 +68,9 @@ export class TerminateEmployeeService {
       actionType: 'employee.terminated',
       actorId: command.actorId ?? 'system',
       category: 'organization',
-      changeSummary: `Employee ${employee.personId.value} terminated. ${assignmentsToEnd.length} assignment(s) ended.`,
+      changeSummary: `Employee ${employee.personId.value} terminated. ${activePositions.length} assignment(s) ended.`,
       details: {
-        assignmentsEnded: assignmentsToEnd.length,
+        assignmentsEnded: activePositions.length,
         reason: command.reason,
         terminatedAt: terminatedAt.toISOString(),
       },
@@ -84,10 +87,10 @@ export class TerminateEmployeeService {
     void this.employeeActivityService?.record({
       personId: command.personId,
       eventType: 'TERMINATED',
-      summary: `Employee terminated. ${assignmentsToEnd.length} assignment(s) ended. Reason: ${command.reason ?? 'Not specified'}`,
+      summary: `Employee terminated. ${activePositions.length} assignment(s) ended. Reason: ${command.reason ?? 'Not specified'}`,
       actorId: command.actorId,
       occurredAt: terminatedAt,
-      metadata: { assignmentsEnded: assignmentsToEnd.length, reason: command.reason },
+      metadata: { assignmentsEnded: activePositions.length, reason: command.reason },
     });
 
     return employee;

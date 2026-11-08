@@ -82,7 +82,7 @@ function Inner({ open, onCancel, onSubmit }: RejectAllReasonModalProps): JSX.Ele
       <FormField
         label="Reason"
         required
-        hint={!loadError ? 'Configurable via Admin → Dictionaries → Assignment Rejection Reasons.' : undefined}
+        hint={!loadError ? 'Configurable via Admin → Dictionaries → Position Rejection Reasons.' : undefined}
         error={loadError}
       >
         <Combobox

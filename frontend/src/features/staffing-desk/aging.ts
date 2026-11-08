@@ -5,7 +5,7 @@ const WARN_THRESHOLD_DAYS = 3;
 const DANGER_THRESHOLD_DAYS = 7;
 
 /**
- * Returns aging tone based on how many days ago a staffing request was created:
+ * Returns aging tone based on how many days ago a position was created:
  *   < 3 days  → neutral (grey)
  *   3-7 days  → warning (amber)
  *   > 7 days  → danger (red)

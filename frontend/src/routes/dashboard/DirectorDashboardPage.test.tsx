@@ -1,30 +1,30 @@
-import { screen, within } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import { fetchDirectorDashboard, fetchDirectorOrgHealth } from '@/lib/api/dashboard-director';
-import { fetchCapitalisationReport } from '@/lib/api/capitalisation';
 import { fetchDirectorSlaSummary } from '@/lib/api/dashboard-exec-sla';
-import { fetchPendingActions } from '@/lib/api/dashboard-pending-actions';
+import {
+  fetchAvailablePool,
+  fetchPortfolioFinance,
+  fetchPortfolioSummary,
+} from '@/lib/api/portfolio-dashboard';
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
-import { fetchProjectHealth } from '@/lib/api/project-health';
-import { fetchWorkloadMatrix } from '@/lib/api/workload';
+import { fetchProjectHealthBatch } from '@/lib/api/project-health';
+import { fetchBusinessAudit } from '@/lib/api/business-audit';
 import { renderRoute } from '@test/render-route';
 import { DirectorDashboardPage } from './DirectorDashboardPage';
 
 vi.mock('@/lib/api/dashboard-director', () => ({
   fetchDirectorDashboard: vi.fn(),
-  fetchDirectorOrgHealth: vi.fn().mockResolvedValue({
-    asOf: '2026-04-05T00:00:00.000Z',
-    totalHeadcount: 0,
-    totalBenchSize: 0,
-    portfolioUnfillRatePct: 0,
-    units: [],
-  }),
+  fetchDirectorOrgHealth: vi.fn(),
+  fetchDirectorAnomalies: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock('@/lib/api/capitalisation', () => ({
-  fetchCapitalisationReport: vi.fn(),
+vi.mock('@/lib/api/portfolio-dashboard', () => ({
+  fetchPortfolioSummary: vi.fn(),
+  fetchAvailablePool: vi.fn(),
+  fetchPortfolioFinance: vi.fn(),
 }));
 
 vi.mock('@/lib/api/project-registry', () => ({
@@ -32,29 +32,26 @@ vi.mock('@/lib/api/project-registry', () => ({
 }));
 
 vi.mock('@/lib/api/project-health', () => ({
-  fetchProjectHealth: vi.fn(),
-}));
-
-vi.mock('@/lib/api/workload', () => ({
-  fetchWorkloadMatrix: vi.fn(),
-}));
-
-vi.mock('@/lib/api/dashboard-pending-actions', () => ({
-  fetchPendingActions: vi.fn().mockResolvedValue({ items: [], totalCount: 0 }),
+  fetchProjectHealthBatch: vi.fn(),
 }));
 
 vi.mock('@/lib/api/dashboard-exec-sla', () => ({
-  fetchDirectorSlaSummary: vi.fn().mockResolvedValue({ slaBreaches24h: 0, timeToFillSeries: [0, 0, 0, 0], timeToFillMedianDays: null, timeToFillSampleSize: 0 }),
+  fetchDirectorSlaSummary: vi.fn(),
+}));
+
+vi.mock('@/lib/api/business-audit', () => ({
+  fetchBusinessAudit: vi.fn().mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 20 }),
 }));
 
 const mockedFetchDirectorDashboard = vi.mocked(fetchDirectorDashboard);
 const mockedFetchDirectorOrgHealth = vi.mocked(fetchDirectorOrgHealth);
 const mockedFetchDirectorSlaSummary = vi.mocked(fetchDirectorSlaSummary);
-const mockedFetchPendingActions = vi.mocked(fetchPendingActions);
-const mockedFetchCapitalisationReport = vi.mocked(fetchCapitalisationReport);
+const mockedFetchPortfolioSummary = vi.mocked(fetchPortfolioSummary);
+const mockedFetchPortfolioFinance = vi.mocked(fetchPortfolioFinance);
+const mockedFetchAvailablePool = vi.mocked(fetchAvailablePool);
 const mockedFetchProjectDirectory = vi.mocked(fetchProjectDirectory);
-const mockedFetchProjectHealth = vi.mocked(fetchProjectHealth);
-const mockedFetchWorkloadMatrix = vi.mocked(fetchWorkloadMatrix);
+const mockedFetchProjectHealthBatch = vi.mocked(fetchProjectHealthBatch);
+const mockedFetchBusinessAudit = vi.mocked(fetchBusinessAudit);
 
 const DASHBOARD_DATA = {
   asOf: '2026-04-05T00:00:00.000Z',
@@ -83,22 +80,33 @@ const DASHBOARD_DATA = {
 describe('DirectorDashboardPage', () => {
   beforeEach(() => {
     mockedFetchDirectorDashboard.mockReset();
-    mockedFetchCapitalisationReport.mockReset();
-    mockedFetchProjectDirectory.mockReset();
-    mockedFetchProjectHealth.mockReset();
-    mockedFetchWorkloadMatrix.mockReset();
-
-    // Default: return empty data for side calls
-    mockedFetchCapitalisationReport.mockRejectedValue(new Error('not enabled'));
+    mockedFetchPortfolioSummary.mockResolvedValue({
+      totalProjects: 12,
+      byRag: { green: 7, amber: 3, red: 2 },
+      totalInternalHC: 0,
+      totalVendorHC: 0,
+      totalOpenGaps: 5,
+      overallFillRate: 85,
+      benchSize: 3,
+    });
+    mockedFetchPortfolioFinance.mockResolvedValue({
+      fiscalYear: 2026,
+      projectCount: 12,
+      totalBudget: 8_400_000,
+      totalActualCost: 5_620_000,
+      totalEarnedValue: 5_410_000,
+      cpi: 0.96,
+      overBudgetProjectCount: 2,
+    });
+    mockedFetchAvailablePool.mockResolvedValue([]);
     mockedFetchProjectDirectory.mockResolvedValue({ items: [] });
-    mockedFetchWorkloadMatrix.mockResolvedValue({ people: [], projects: [] });
+    mockedFetchProjectHealthBatch.mockResolvedValue(new Map());
     mockedFetchDirectorSlaSummary.mockResolvedValue({
       slaBreaches24h: 0,
       timeToFillSeries: [0, 0, 0, 0],
       timeToFillMedianDays: null,
       timeToFillSampleSize: 0,
     });
-    mockedFetchPendingActions.mockResolvedValue({ items: [], totalCount: 0 });
     mockedFetchDirectorOrgHealth.mockResolvedValue({
       asOf: '2026-04-05T00:00:00.000Z',
       totalHeadcount: 0,
@@ -106,40 +114,65 @@ describe('DirectorDashboardPage', () => {
       portfolioUnfillRatePct: 0,
       units: [],
     });
+    mockedFetchBusinessAudit.mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 20 });
   });
 
-  it('renders KPI summary cards with drilldown links', async () => {
+  it('renders the DS-canvas PageHeader and 5-tile KPI strip', async () => {
     mockedFetchDirectorDashboard.mockResolvedValue(DASHBOARD_DATA);
 
     renderWithRouter();
 
-    // KPI strip labels reflect the redesigned director dashboard:
-    // Active Projects / Utilisation / On Bench / Open Gaps / Fill Rate / G·A·R
-    expect(await screen.findByText('Active Projects')).toBeInTheDocument();
-    expect(screen.getByText('12')).toBeInTheDocument();
+    expect(await screen.findByText('Portfolio · this week')).toBeInTheDocument();
+
+    expect(await screen.findByText('Active projects')).toBeInTheDocument();
+    expect(screen.getByText('At-risk projects')).toBeInTheDocument();
+    expect(screen.getByText('Budget variance · portfolio')).toBeInTheDocument();
     expect(screen.getByText('Utilisation')).toBeInTheDocument();
-    expect(screen.getByText('On Bench')).toBeInTheDocument();
+    expect(screen.getByText('Open positions')).toBeInTheDocument();
   });
 
-  // DirectorDashboard was redesigned: "8-Week Staffing Trend" and "Total FTE by Month"
-  // sections no longer exist. The page now shows KPI strip + Unit Utilisation + various
-  // panels; the specific chart sections these tests asserted against were removed.
-  // TODO: refresh coverage against the new section titles.
-  it.skip('renders weekly trend section on staffing tab (section removed in redesign)', async () => {});
-
-  it('renders unit utilisation on overview tab', async () => {
+  it('renders the "What needs you now" anomaly strip wrapper', async () => {
     mockedFetchDirectorDashboard.mockResolvedValue(DASHBOARD_DATA);
 
-    renderWithRouter('/dashboard/director');
+    renderWithRouter();
 
-    expect(await screen.findByText('Unit Utilisation')).toBeInTheDocument();
+    expect(await screen.findByTestId('director-what-needs-you-now')).toBeInTheDocument();
   });
 
-  it.skip('renders FTE trend chart section (section removed in redesign)', async () => {});
+  it('renders the 4-axis RAG portfolio table section', async () => {
+    mockedFetchDirectorDashboard.mockResolvedValue(DASHBOARD_DATA);
 
-  it.skip('renders portfolio summary table when projects exist (section removed in redesign)', async () => {});
+    renderWithRouter();
 
-  it.skip('renders cost distribution + utilisation gauge sections (removed in redesign)', async () => {});
+    expect(await screen.findByText('Portfolio · 4-axis RAG')).toBeInTheDocument();
+  });
+
+  it('renders the 3-col grid: Headcount mix + Cash position + Recent decisions', async () => {
+    mockedFetchDirectorDashboard.mockResolvedValue(DASHBOARD_DATA);
+
+    renderWithRouter();
+
+    expect(await screen.findByText('Headcount mix')).toBeInTheDocument();
+    expect(await screen.findByText('Cash position')).toBeInTheDocument();
+    expect(await screen.findByText('Recent decisions')).toBeInTheDocument();
+  });
+
+  it('renders the hero 2-col: burn chart + variance by driver', async () => {
+    mockedFetchDirectorDashboard.mockResolvedValue(DASHBOARD_DATA);
+
+    renderWithRouter();
+
+    expect(await screen.findByTestId('director-burn-chart')).toBeInTheDocument();
+    expect(await screen.findByTestId('director-variance-by-driver')).toBeInTheDocument();
+  });
+
+  it('renders the freshness footer', async () => {
+    mockedFetchDirectorDashboard.mockResolvedValue(DASHBOARD_DATA);
+
+    renderWithRouter();
+
+    expect(await screen.findByTestId('director-data-freshness')).toBeInTheDocument();
+  });
 
   it('shows error state when dashboard fetch fails', async () => {
     mockedFetchDirectorDashboard.mockRejectedValue(new Error('Server error'));
@@ -147,48 +180,6 @@ describe('DirectorDashboardPage', () => {
     renderWithRouter();
 
     expect(await screen.findByText('Server error')).toBeInTheDocument();
-  });
-
-  it('renders the Org Health section header with portfolio totals', async () => {
-    // LEAN-P4-missing-5
-    mockedFetchDirectorDashboard.mockResolvedValue(DASHBOARD_DATA);
-    mockedFetchDirectorOrgHealth.mockResolvedValue({
-      asOf: '2026-06-05T00:00:00.000Z',
-      totalHeadcount: 42,
-      totalBenchSize: 7,
-      portfolioUnfillRatePct: 16.7,
-      units: [
-        { orgUnitId: 'u-1', orgUnitCode: 'ENG', orgUnitName: 'Engineering', headcount: 30, staffedCount: 25, benchSize: 5, unfillRatePct: 16.7 },
-        { orgUnitId: 'u-2', orgUnitCode: 'OPS', orgUnitName: 'Operations', headcount: 12, staffedCount: 10, benchSize: 2, unfillRatePct: 16.7 },
-      ],
-    });
-
-    renderWithRouter();
-
-    // Section title includes portfolio totals.
-    expect(await screen.findByText(/Org Health by Unit · 42 HC · 7 bench \(16\.7%\)/)).toBeInTheDocument();
-    const section = await screen.findByTestId('director-org-health-section');
-    // Per-unit rows render inside the Org Health section (Engineering also
-    // appears in Unit Utilisation — scope with `within`).
-    expect(within(section).getByText('Engineering')).toBeInTheDocument();
-    expect(within(section).getByText('Operations')).toBeInTheDocument();
-    expect(within(section).getByText('ENG')).toBeInTheDocument();
-    expect(within(section).getByText('OPS')).toBeInTheDocument();
-  });
-
-  it('renders empty state when no org units exist', async () => {
-    mockedFetchDirectorDashboard.mockResolvedValue(DASHBOARD_DATA);
-    mockedFetchDirectorOrgHealth.mockResolvedValue({
-      asOf: '2026-06-05T00:00:00.000Z',
-      totalHeadcount: 0,
-      totalBenchSize: 0,
-      portfolioUnfillRatePct: 0,
-      units: [],
-    });
-
-    renderWithRouter();
-
-    expect(await screen.findByText('No org units')).toBeInTheDocument();
   });
 });
 

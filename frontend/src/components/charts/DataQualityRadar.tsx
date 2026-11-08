@@ -19,7 +19,7 @@ export function DataQualityRadar({ scores }: DataQualityRadarProps): JSX.Element
   const rows: SignalRow[] = [
     { label: 'Manager', value: scores.managerPct },
     { label: 'Org Unit', value: scores.orgUnitPct },
-    { label: 'Assignments', value: scores.assignmentPct },
+    { label: 'Positions', value: scores.assignmentPct },
     { label: 'Email', value: scores.emailPct },
     { label: 'Resource Pool', value: scores.resourcePoolPct },
   ];

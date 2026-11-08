@@ -28,6 +28,8 @@ export class ProjectExternalLinkDto {
   public archived!: boolean;
 }
 
+export type ProjectBudgetStatus = 'GREEN' | 'YELLOW' | 'RED' | 'UNSET';
+
 export class ProjectDirectoryItemDto {
   @ApiProperty()
   public id!: string;
@@ -61,6 +63,31 @@ export class ProjectDirectoryItemDto {
 
   @ApiProperty({ required: false, nullable: true })
   public clientName!: string | null;
+
+  /**
+   * W2-07 — Cost Performance Index (EV / AC) from the latest ProjectBudget
+   * row. `null` when no budget exists, or actualCost ≤ 0, or earnedValue is
+   * not recorded. Mirrors the radiator-signal-collector computation.
+   */
+  @ApiProperty({ required: false, nullable: true })
+  public cpi!: number | null;
+
+  /**
+   * W2-07 — derived budget health: GREEN when projected EAC ≤ 85 % of BAC;
+   * YELLOW when 85 % < EAC ≤ 100 %; RED when EAC > BAC; UNSET when no
+   * budget has been entered. Matches the financial-service health-color
+   * thresholds.
+   */
+  @ApiProperty({ required: false, nullable: true, enum: ['GREEN', 'YELLOW', 'RED', 'UNSET'] })
+  public budgetStatus!: ProjectBudgetStatus;
+
+  /**
+   * W2-07 — count of ProjectPosition rows on the project whose `fillStatus`
+   * is `OPEN`. The "demand still on the market" number; used in MoneyTab
+   * and ProjectDirectoryInspector.
+   */
+  @ApiProperty()
+  public openPositionsCount!: number;
 }
 
 export class ProjectDirectoryResponseDto {

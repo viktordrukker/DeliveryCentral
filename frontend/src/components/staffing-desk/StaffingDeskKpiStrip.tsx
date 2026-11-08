@@ -80,11 +80,17 @@ export function StaffingDeskKpiStrip({ kpis, onDemandClick, onSupplyClick, suppl
             <span className="kpi-strip__context">{t.context}</span>
           </Link>
         ) : t.onClick ? (
-          <a key={t.label} className="kpi-strip__item" onClick={t.onClick} style={{ borderLeft: `3px solid ${t.color}`, cursor: 'pointer' }} role="button" tabIndex={0}>
+          <button
+            key={t.label}
+            type="button"
+            className="kpi-strip__item"
+            onClick={t.onClick}
+            style={{ borderLeft: `3px solid ${t.color}`, background: 'none', textAlign: 'left', font: 'inherit' }}
+          >
             <span className="kpi-strip__value">{t.value}</span>
             <span className="kpi-strip__label">{t.label}</span>
             <span className="kpi-strip__context">{t.context}</span>
-          </a>
+          </button>
         ) : (
           <div key={t.label} className="kpi-strip__item" style={{ borderLeft: `3px solid ${t.color}` }}>
             <span className="kpi-strip__value">{t.value}</span>

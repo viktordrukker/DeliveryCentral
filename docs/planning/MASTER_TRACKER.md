@@ -2,7 +2,7 @@
 
 **Version:** 1.2  
 **Created:** 2026-04-05  
-**Updated:** 2026-05-10 (bank-IT pivot post-Phase-11; doc-revision side-job 1 closed)  
+**Updated:** 2026-06-09 (SoT PR 18 doc sweep — V2-H.13/V2-H.14 marked [x] per LEAN-P1/P2/P3 completion; account references now @itco.local; jtbd-matrix criticalJtbds count corrected)  
 **Source backlog:** `docs/planning/DELIVERY_CENTRAL_PRODUCT_BACKLOG.md` v3.0 _(file was never committed to the repo; FR refs below are from the original planning document)_  
 **Phase 4 detail:** `docs/planning/phase4-plan.md`  
 **Priority decomposition:** `docs/planning/decomposition-priority-2026-04.md`
@@ -3306,8 +3306,8 @@ Items the BA validation 2026-05-25 flagged as missing or under-scoped in the spi
 - [ ] **V2-H.10** S2 finishing — backfill script `prisma/scripts/backfill-project-positions.ts` (idempotent against `it-company` seed). — BE
 - [ ] **V2-H.11** S2 finishing — `/projects/:id/positions` skeleton page reading new endpoints. — FE
 - [ ] **V2-H.12** S2 finishing — `/people/bench` skeleton page reading new endpoints (some overlap with V2-A.7). — FE
-- [ ] **V2-H.13** S5 contract phase — migrate 21 callsites of `ProjectAssignment` to `ProjectPosition.activeFill` view. — BE _⚑ 2026-05-29 validation: this is **Track 1 / CRITICAL PATH**, not "finishing." The `ProjectPosition` aggregate is built but **parallel/shelved** — staffing-desk, supply/demand-profile, planner & dashboards all still read the legacy model (see `NEW-LGL-1`). Until this + NEW-LGL-1 land, the bank onboards onto the legacy flows, so "lean-flow go-live" ≈ 5–10%. See `docs/planning/v2-plan-validation-2026-05.md`._
-- [ ] **V2-H.14** S5 contract phase — `20260720_lean_staffing_contract` Prisma migration dropping `StaffingRequest`, `StaffingRequestProposalSlate`, `StaffingRequestProposalCandidate`, `StaffingRequestFulfilment`, `PersonReleaseRequest`, `PersonReleaseApproval`, `ProjectAssignment`, `AssignmentApproval`, `AssignmentHistory`, `AssignmentProposalSlate`, `AssignmentProposalCandidate`. Forward-only after backfill verified. — BE _⚑ 2026-05-29 validation: forward-only and the lean docs' **#1 risk** (single point of failure) — needs a dedicated, well-tested sprint, not a long-tail slice. Must follow V2-H.13 + NEW-LGL-1 (reads re-pointed) or it breaks every live staffing surface._
+- [x] **V2-H.13** S5 contract phase — migrate 21 callsites of `ProjectAssignment` to `ProjectPosition.activeFill` view. — BE _Closed 2026-06-09 via SoT PRs 14/15 (read + write re-point). All live read paths now source from `ProjectPosition`; legacy tables receive only mirror writes pending PR 16 drop._
+- [x] **V2-H.14** S5 contract phase — `20260720_lean_staffing_contract` Prisma migration dropping `StaffingRequest`, `StaffingRequestProposalSlate`, `StaffingRequestProposalCandidate`, `StaffingRequestFulfilment`, `PersonReleaseRequest`, `PersonReleaseApproval`, `ProjectAssignment`, `AssignmentApproval`, `AssignmentHistory`, `AssignmentProposalSlate`, `AssignmentProposalCandidate`. Forward-only after backfill verified. — BE _Closed 2026-06-09 via SoT PR 16 forward-only drop migration `20260*lean_p3_2_drop_legacy_tables`. Migration is idempotent (DM-R-4) and reversible (rollback.sql + Reversible.md)._
 - [ ] **V2-H.15** S5 contract phase — `scripts/check-deprecated-assignment-import.cjs` ratchet to 0. — FE + BE
 - [ ] **V2-H.16** S5 contract phase — delete `frontend/src/components/ds-legacy/` (if exists) + legacy CSS classes from `global.css`. — FE
 - [ ] **V2-H.17** S4 wiring — `EvmComputationService` to nightly cron. Service exists at `src/modules/financial-governance/application/evm-computation.service.ts:84` but isn't scheduled. — BE

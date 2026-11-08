@@ -54,7 +54,7 @@ export function HrDataQualityTab({
     { label: 'Manager Coverage', pct: scores.managerPct },
     { label: 'Org Unit Coverage', pct: scores.orgUnitPct },
     { label: 'Email Coverage', pct: scores.emailPct },
-    { label: 'Assignment Coverage', pct: scores.assignmentPct },
+    { label: 'Position Coverage', pct: scores.assignmentPct },
     { label: 'Resource Pool', pct: scores.resourcePoolPct },
   ];
 

@@ -36,15 +36,11 @@ const ALLOWED_RUNTIME_IMPORTERS = new Set<string>([
   // detects — skip self.
   'features/lean-migration/phase2-exit-gate.test.ts',
   // ── LEAN-P2-10 write-bridge debt (write-deferred per callsite-audit) ──
-  // The proposal slate aggregate is still served by the legacy
-  // /staffing-requests controller; the lean /project-positions write
-  // surface does not expose proposal-slate writes today. These three files
-  // import `createStaffingRequest` / `submitStaffingRequest` /
-  // `submitProposalSlate` / `pickProposalCandidate` / `rejectProposalSlate`
-  // and the matching read suggestion helper. Tracked in callsite-audit as
-  // `write-deferred`; remove the entry below when LEAN-P2-10 ships.
-  'components/staffing-requests/ProposalBuilderDrawer.tsx',
-  'components/staffing-requests/ProposalReviewPanel.tsx',
+  // The legacy `/staffing-requests` controller still serves the create-
+  // request write surface; the lean `/project-positions` write surface does
+  // not yet expose it. `StaffingRequestForm` imports `createStaffingRequest`
+  // and is tracked in callsite-audit as `write-deferred`; remove the entry
+  // below when LEAN-P2-10 ships.
   'components/staffing-requests/StaffingRequestForm.tsx',
 ]);
 

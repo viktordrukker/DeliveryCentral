@@ -172,7 +172,7 @@ export function ProjectDirectoryInspector({
           </div>
         </div>
         <div>
-          <div style={S_META_LABEL}>Assignments</div>
+          <div style={S_META_LABEL}>Positions</div>
           <div style={{ ...S_META_VALUE, fontVariantNumeric: 'tabular-nums' }}>
             {row.assignmentCount}
           </div>

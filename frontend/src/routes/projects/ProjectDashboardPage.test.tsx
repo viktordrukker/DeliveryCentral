@@ -66,7 +66,7 @@ describe('ProjectDashboardPage', () => {
 
     renderWithRouter('/projects/prj-1/dashboard');
 
-    expect(await screen.findByText('No assignments')).toBeInTheDocument();
+    expect(await screen.findByText('No positions')).toBeInTheDocument();
     expect(screen.getByText('No activity data')).toBeInTheDocument();
     expect(screen.getByText('No allocations')).toBeInTheDocument();
   });

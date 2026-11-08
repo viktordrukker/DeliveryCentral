@@ -4,9 +4,10 @@ import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 
 import { AppModule } from '@src/app.module';
-import { AssignmentStatus } from '@src/modules/assignments/domain/value-objects/assignment-status';
-import { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
+import { ProjectPosition } from '@src/modules/project-positions/domain/entities/project-position.entity';
+import { ProjectPositionRepositoryPort } from '@src/modules/project-positions/domain/repositories/project-position-repository.port';
+import { PositionFillStatus } from '@src/modules/project-positions/domain/value-objects/position-fill-status';
+import { PositionId } from '@src/modules/project-positions/domain/value-objects/position-id';
 import { CloseProjectService } from '@src/modules/project-registry/application/close-project.service';
 import { ProjectLifecycleConflictError } from '@src/modules/project-registry/application/project-lifecycle-conflict.error';
 import { Project } from '@src/modules/project-registry/domain/entities/project.entity';
@@ -25,6 +26,32 @@ import { roleHeaders } from '../helpers/api/auth-headers';
 import { createAppPrismaClient } from '../helpers/db/create-app-prisma-client';
 import { resetPersistenceTestDatabase } from '../helpers/db/reset-persistence-test-database';
 import { seedDemoOrganizationRuntimeData } from '../helpers/db/seed-demo-organization-runtime-data';
+
+function buildPositionRepoFake(positions: ProjectPosition[] = []): ProjectPositionRepositoryPort {
+  return {
+    findById: async (id: string) => positions.find((p) => p.positionId.value === id) ?? null,
+    findByPositionId: async (id) => positions.find((p) => p.positionId.value === id.value) ?? null,
+    findByQuery: async (query) => {
+      return positions.filter((position) => {
+        if (query.projectId && position.projectId !== query.projectId) return false;
+        if (query.activePersonId && position.activePersonId !== query.activePersonId) return false;
+        if (query.fillStatuses && !query.fillStatuses.includes(position.fillStatus.value)) return false;
+        return true;
+      });
+    },
+    findActiveByPersonId: async (personId, asOf) =>
+      positions.filter(
+        (p) =>
+          p.activePersonId === personId &&
+          ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'].includes(p.fillStatus.value) &&
+          (!p.activeValidFrom || p.activeValidFrom <= asOf) &&
+          (!p.activeValidTo || p.activeValidTo > asOf),
+      ),
+    countByQuery: async () => 0,
+    save: async () => undefined,
+    delete: async () => undefined,
+  } as ProjectPositionRepositoryPort;
+}
 
 describe('Close project', () => {
   it('closes an active project and aggregates workspend from work evidence', async () => {
@@ -106,13 +133,13 @@ describe('Close project', () => {
         WorkEvidenceId.from('73000000-0000-0000-0000-000000000002'),
       ),
     ]);
-    const projectAssignmentRepository = new InMemoryProjectAssignmentRepository();
+    const projectPositionRepository = buildPositionRepoFake();
     const appConfig = new AppConfig();
     const service = new CloseProjectService(
       projectRepository,
       workEvidenceRepository,
       personRepository,
-      projectAssignmentRepository,
+      projectPositionRepository,
       appConfig,
     );
 
@@ -145,12 +172,12 @@ describe('Close project', () => {
     ]);
     const personRepository = new InMemoryPersonRepository();
     const workEvidenceRepository = new InMemoryWorkEvidenceRepository();
-    const projectAssignmentRepository = new InMemoryProjectAssignmentRepository();
+    const projectPositionRepository = buildPositionRepoFake();
     const service = new CloseProjectService(
       projectRepository,
       workEvidenceRepository,
       personRepository,
-      projectAssignmentRepository,
+      projectPositionRepository,
       new AppConfig(),
     );
 
@@ -188,22 +215,29 @@ describe('Close project', () => {
     ]);
     const personRepository = new InMemoryPersonRepository();
     const workEvidenceRepository = new InMemoryWorkEvidenceRepository();
-    const projectAssignmentRepository = new InMemoryProjectAssignmentRepository([
-      ProjectAssignment.create({
-        personId: '71000000-0000-0000-0000-000000000003',
-        projectId: '70000000-0000-0000-0000-000000000003',
-        requestedAt: new Date('2025-06-01T00:00:00.000Z'),
-        requestedByPersonId: 'director-1',
-        staffingRole: 'Engineer',
-        status: AssignmentStatus.booked(),
-        validFrom: new Date('2025-06-01T00:00:00.000Z'),
-      }),
+    const projectPositionRepository = buildPositionRepoFake([
+      ProjectPosition.create(
+        {
+          projectId: '70000000-0000-0000-0000-000000000003',
+          role: 'Engineer',
+          requiredAllocationPercent: 100,
+          startDate: new Date('2025-06-01T00:00:00.000Z'),
+          endDate: new Date('2026-06-01T00:00:00.000Z'),
+          fillStatus: PositionFillStatus.booked(),
+          activePersonId: '71000000-0000-0000-0000-000000000003',
+          activeAllocationPercent: 100,
+          activeValidFrom: new Date('2025-06-01T00:00:00.000Z'),
+          requestedByPersonId: 'director-1',
+          createdByPersonId: 'director-1',
+        },
+        PositionId.from('70000000-0000-0000-0000-000000000099'),
+      ),
     ]);
     const service = new CloseProjectService(
       projectRepository,
       workEvidenceRepository,
       personRepository,
-      projectAssignmentRepository,
+      projectPositionRepository,
       new AppConfig(),
     );
 

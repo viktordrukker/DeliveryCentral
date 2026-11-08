@@ -15,6 +15,7 @@ import { TabBar } from '@/components/common/TabBar';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import { formatDate, formatDateShort } from '@/lib/format-date';
 import { ReportingLineForm } from '@/components/people/ReportingLineForm';
 import { PersonSkillsTab } from '@/components/people/PersonSkillsTab';
@@ -213,7 +214,7 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
             description="Head back to your dashboard or jump to the org chart for the directory view."
             actions={[
               { label: 'Go to my dashboard', href: getDashboardPath(principal?.roles ?? []), variant: 'primary' },
-              { label: 'View org chart', href: '/org-chart', variant: 'secondary' },
+              { label: 'View org chart', href: '/org', variant: 'secondary' },
             ]}
           />
         </SectionCard>
@@ -342,6 +343,28 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
             ) : null}
           </>
         }
+        badges={
+          // W3-05 — replaces the legacy 5-up SummaryCard KPI strip with a
+          // single lifecycle StatusBadge per Phase 18 Detail Surface grammar.
+          // Org-unit, line-manager, and assignment counts are surfaced inside
+          // the section cards below (no duplicate KPI tile row).
+          lifecycleStatus || state.data?.lifecycleStatus ? (
+            <StatusBadge
+              tone={(() => {
+                const status = lifecycleStatus ?? state.data?.lifecycleStatus ?? 'ACTIVE';
+                if (status === 'ACTIVE') return 'active';
+                if (status === 'INACTIVE') return 'warning';
+                if (status === 'TERMINATED') return 'danger';
+                return 'neutral';
+              })()}
+              label={humanizeEnum(
+                lifecycleStatus ?? state.data?.lifecycleStatus ?? 'ACTIVE',
+                EMPLOYMENT_STATUS_LABELS,
+              )}
+              variant="chip"
+            />
+          ) : null
+        }
         eyebrow="People"
         subtitle="Employee profile foundation for staffing visibility and future portal workflows."
         title={state.data?.displayName ?? 'Employee Details'}
@@ -366,6 +389,7 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
           <EmptyState
             description={`No employee was found for ${id ?? 'the requested id'}.`}
             title="Employee not found"
+            action={{ href: '/people', label: 'Back to people' }}
           />
         </SectionCard>
       ) : null}
@@ -435,26 +459,10 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
 
       {state.data && activeTab !== '360' && activeTab !== 'skills' && activeTab !== 'history' ? (
         <>
-          <div className="kpi-strip">
-            <SummaryCard label="Person" value={state.data.displayName} />
-            <SummaryCard
-              label="Current Org Unit"
-              value={state.data.currentOrgUnit?.name ?? 'Not assigned'}
-            />
-            <SummaryCard
-              label="Line Manager"
-              value={state.data.currentLineManager?.displayName ?? 'No line manager'}
-            />
-            <SummaryCard
-              label="Active Assignments"
-              value={String(state.data.currentAssignmentCount)}
-            />
-            <SummaryCard
-              label="Lifecycle Status"
-              value={humanizeEnum(lifecycleStatus ?? state.data?.lifecycleStatus ?? 'Active', EMPLOYMENT_STATUS_LABELS)}
-            />
-          </div>
-
+          {/* W3-05 — legacy ad-hoc 5-up KPI tile strip removed. Lifecycle is
+              now shown as a single StatusBadge in PageHeader; org-unit /
+              line-manager / assignment-count remain inside SectionCards per
+              Phase 18 Detail Surface grammar. */}
           <div className="dashboard-main-grid">
             <SectionCard title="Employee Summary">
               <dl className="details-list">
@@ -549,16 +557,20 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
               />
             </SectionCard>
 
-            <SectionCard title="Active Assignments Summary">
+            <SectionCard title="Active Positions Summary">
               {state.data.currentAssignmentCount === 0 ? (
                 <EmptyState
-                  description="This person has no active assignments at this time."
-                  title="No active assignments"
+                  description="This person has no active positions at this time."
+                  title="No active positions"
+                  action={{
+                    href: `/staffing-desk?view=table&kind=position&personId=${id ?? ''}`,
+                    label: 'Open staffing desk',
+                  }}
                 />
               ) : (
                 <dl className="details-list">
                   <div>
-                    <dt>Active assignments</dt>
+                    <dt>Active positions</dt>
                     <dd>{state.data.currentAssignmentCount}</dd>
                   </div>
                 </dl>
@@ -585,12 +597,6 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
               />
             </SectionCard>
 
-            <SectionCard title="Future Workload and History">
-              <EmptyState
-                description="Future allocations, org history, and employee activity history are not yet available."
-                title="No history data"
-              />
-            </SectionCard>
           </div>
         </>
       ) : null}
@@ -598,18 +604,3 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
   );
 }
 
-interface SummaryCardProps {
-  label: string;
-  value: string;
-}
-
-function SummaryCard({ label, value }: SummaryCardProps): JSX.Element {
-  return (
-    <SectionCard>
-      <div className="metric-card">
-        <div className="metric-card__value metric-card__value--compact">{value}</div>
-        <div className="metric-card__label">{label}</div>
-      </div>
-    </SectionCard>
-  );
-}

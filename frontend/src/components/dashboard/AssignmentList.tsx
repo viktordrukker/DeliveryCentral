@@ -37,8 +37,8 @@ export function AssignmentList({
           <p className="monitoring-list__summary">
             {item.staffingRole} · {item.allocationPercent}% · {item.approvalState}
           </p>
-          <Button as={Link} variant="secondary" style={{ marginTop: '6px', fontSize: '0.75rem' }} to={`/assignments/${item.id}`}>
-            View assignment
+          <Button as={Link} variant="secondary" style={{ marginTop: '6px', fontSize: '0.75rem' }} to={`/projects/${item.project.id}?position=${item.id}`}>
+            View position
           </Button>
         </div>
       ))}

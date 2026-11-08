@@ -39,3 +39,8 @@ docs/planning/workforce-ops-benchmark-synthesis.md
 # Anchored to repo root so we don't accidentally ignore frontend/src/components/ds/
 # under `core.ignoreCase=true`.
 /DS/
+
+# V2 Playwright baseline snapshots — uploaded as CI artifact, never committed.
+# Keep the directory checked in via the .keep file so CI has somewhere to write.
+e2e/v2/snapshots/*
+!e2e/v2/snapshots/.keep

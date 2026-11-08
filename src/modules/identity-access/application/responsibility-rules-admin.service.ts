@@ -64,6 +64,8 @@ export class ResponsibilityRulesAdminService {
         isActive: true,
         notes: dto.notes ?? null,
         tenantId: dto.tenantId ?? null,
+        createdByPersonId: actorId,
+        updatedByPersonId: actorId,
       },
     });
 
@@ -103,6 +105,7 @@ export class ResponsibilityRulesAdminService {
         ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
         ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
+        updatedByPersonId: actorId,
       },
     });
 
@@ -127,7 +130,7 @@ export class ResponsibilityRulesAdminService {
     }
     const updated = await this.prisma.responsibilityRule.update({
       where: { id },
-      data: { archivedAt: new Date(), isActive: false },
+      data: { archivedAt: new Date(), isActive: false, updatedByPersonId: actorId },
     });
 
     this.auditLogger?.record({

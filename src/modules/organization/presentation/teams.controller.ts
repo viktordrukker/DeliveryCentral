@@ -10,6 +10,7 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
@@ -49,9 +50,15 @@ export class TeamsController {
   @ApiOperation({ summary: 'Create an operational team' })
   @ApiCreatedResponse({ type: TeamSummaryDto })
   @RequireRoles(...RM_EXEC_ROLES)
-  public async createTeam(@Body() request: CreateTeamRequestDto): Promise<TeamSummaryDto> {
+  public async createTeam(
+    @Body() request: CreateTeamRequestDto,
+    @Req() req: { principal?: { personId?: string } },
+  ): Promise<TeamSummaryDto> {
     try {
-      const created = await this.createTeamService.execute(request);
+      const created = await this.createTeamService.execute({
+        ...request,
+        actorId: req.principal?.personId ?? null,
+      });
       const team = await this.teamQueryService.getTeam(created.id);
 
       if (!team) {
@@ -125,12 +132,14 @@ export class TeamsController {
   public async updateTeamMembers(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() request: UpdateTeamMemberRequestDto,
+    @Req() req: { principal?: { personId?: string } },
   ): Promise<TeamMembersResponseDto> {
     try {
       await this.updateTeamMemberService.execute({
         action: request.action,
         personId: request.personId,
         teamId: id,
+        actorId: req.principal?.personId ?? null,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Team member update failed.';

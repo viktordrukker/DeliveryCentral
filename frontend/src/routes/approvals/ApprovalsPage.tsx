@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import { useTitleBarActions } from '@/app/title-bar-context';
+import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
+import { TipTrigger } from '@/components/common/TipBalloon';
 import { Avatar } from '@/components/ds/Avatar';
 import { Button } from '@/components/ds';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -100,6 +103,7 @@ export function ApprovalsPage(): JSX.Element {
   const activeFilter: ApprovalQueueSource | 'all' = isValidSource(sourceParam)
     ? sourceParam
     : 'all';
+  const { setActions } = useTitleBarActions();
   const [items, setItems] = useState<ApprovalQueueItemDto[] | null>(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -158,6 +162,63 @@ export function ApprovalsPage(): JSX.Element {
       )
     : {};
 
+  // W3-03 — inject the source filter chips + Refresh + quick-action links into
+  // the page title bar, matching the canonical DashboardPage grammar
+  // (filters + quick-action links + TipTrigger). The inline filter row is
+  // dropped; the chips render in the global title-bar slot.
+  useEffect(() => {
+    setActions(
+      <>
+        <div
+          className="approvals-filters"
+          style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}
+          data-testid="approvals-filters"
+        >
+          {SOURCES.map((src) => {
+            const isActive = src.id === activeFilter;
+            const count = counts[src.id] ?? 0;
+            return (
+              <Button
+                key={src.id}
+                size="sm"
+                variant={isActive ? 'primary' : 'secondary'}
+                onClick={() => setFilter(src.id)}
+                aria-pressed={isActive}
+              >
+                <span aria-hidden style={{ marginRight: 5 }}>{SOURCE_ICON[src.id]}</span>
+                {src.label}
+                {count > 0 ? (
+                  <span
+                    style={{
+                      marginLeft: 6,
+                      fontVariantNumeric: 'tabular-nums',
+                      opacity: 0.85,
+                    }}
+                  >
+                    · {count}
+                  </span>
+                ) : null}
+              </Button>
+            );
+          })}
+        </div>
+        <Button as={Link} variant="secondary" size="sm" to="/staffing-desk">Staffing desk</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/dashboard">Dashboard</Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          type="button"
+          onClick={() => setReloadTick((t) => t + 1)}
+          data-testid="approvals-refresh"
+        >
+          ↻ Refresh
+        </Button>
+        <TipTrigger />
+      </>,
+    );
+    return () => setActions(null);
+  }, [setActions, activeFilter, items]);
+
   return (
     <PageContainer testId="approvals-page">
       <PageHeader
@@ -176,70 +237,31 @@ export function ApprovalsPage(): JSX.Element {
             ) : null}
           </>
         }
-        actions={
-          <Button
-            variant="secondary"
-            size="sm"
-            type="button"
-            onClick={() => setReloadTick((t) => t + 1)}
-            data-testid="approvals-refresh"
-          >
-            ↻ Refresh
-          </Button>
-        }
       />
-
-      {/* Source filter chips */}
-      <div
-        className="approvals-filters"
-        style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '4px 0 12px' }}
-        data-testid="approvals-filters"
-      >
-        {SOURCES.map((src) => {
-          const isActive = src.id === activeFilter;
-          const count = counts[src.id] ?? 0;
-          return (
-            <Button
-              key={src.id}
-              size="sm"
-              variant={isActive ? 'primary' : 'secondary'}
-              onClick={() => setFilter(src.id)}
-              aria-pressed={isActive}
-            >
-              <span aria-hidden style={{ marginRight: 5 }}>{SOURCE_ICON[src.id]}</span>
-              {src.label}
-              {count > 0 ? (
-                <span
-                  style={{
-                    marginLeft: 6,
-                    fontVariantNumeric: 'tabular-nums',
-                    opacity: 0.85,
-                  }}
-                >
-                  · {count}
-                </span>
-              ) : null}
-            </Button>
-          );
-        })}
-      </div>
 
       {loading ? <LoadingState variant="skeleton" skeletonType="cards" /> : null}
       {error ? <ErrorState description={error} onRetry={() => setFilter(activeFilter)} /> : null}
 
       {!loading && !error && items != null ? (
         items.length === 0 ? (
-          <div className="card" data-testid="approvals-empty">
-            <div className="card-header">
-              <h3>Inbox zero</h3>
-            </div>
-            <div className="card-body">
-              <p className="compact muted" style={{ margin: 0 }}>
-                {activeFilter === 'all'
-                  ? 'There are no approvals waiting in the unified queue.'
-                  : `No items in the ${SOURCES.find((s) => s.id === activeFilter)?.label} queue.`}
-              </p>
-            </div>
+          // W2-09 — empty state surfaces forward actions per UX Law 2:
+          // - clearing the source filter when one is active (since other
+          //   sources may still have work waiting)
+          // - jumping to the dashboard for next-best work
+          <div data-testid="approvals-empty">
+            <EmptyState
+              title="Inbox zero"
+              description={
+                activeFilter === 'all'
+                  ? 'There are no approvals waiting in the unified queue. Time to ship.'
+                  : `No items in the ${SOURCES.find((s) => s.id === activeFilter)?.label} queue.`
+              }
+              showClearFilters={activeFilter !== 'all'}
+              onClearFilters={() => setFilter('all')}
+              action={
+                activeFilter === 'all' ? { href: '/dashboard', label: 'Back to dashboard' } : undefined
+              }
+            />
           </div>
         ) : (() => {
           const selectedItem = selectedItemKey
@@ -306,10 +328,10 @@ export function ApprovalsPage(): JSX.Element {
                         }}
                         aria-pressed={isActive}
                       >
-                        <span
-                          className={`tone-dot tone-${tone}`}
-                          style={{ flexShrink: 0 }}
-                          aria-hidden="true"
+                        <StatusBadge
+                          tone={tone === 'critical' ? 'danger' : tone}
+                          variant="dot"
+                          label=""
                         />
                         <span
                           className="compact muted"
@@ -340,13 +362,11 @@ export function ApprovalsPage(): JSX.Element {
                           </div>
                         </div>
                         {item.slaStage ? (
-                          <span
-                            className={`badge badge-${SLA_TONE[item.slaStage]}`}
-                            style={{ whiteSpace: 'nowrap' }}
-                          >
-                            <span className="dot" />
-                            {SLA_LABEL[item.slaStage]}
-                          </span>
+                          <StatusBadge
+                            tone={SLA_TONE[item.slaStage]}
+                            label={SLA_LABEL[item.slaStage]}
+                            variant="chip"
+                          />
                         ) : (
                           <span className="compact muted" style={{ whiteSpace: 'nowrap' }}>
                             no SLA

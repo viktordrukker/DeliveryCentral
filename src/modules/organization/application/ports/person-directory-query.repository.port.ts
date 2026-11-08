@@ -1,12 +1,13 @@
 export interface PersonDirectoryRecord {
   currentAssignmentCount: number;
-  currentLineManager: { displayName: string; id: string } | null;
-  currentOrgUnit: { code: string; id: string; name: string } | null;
+  currentLineManager: { displayName: string; id: string; publicId: string | null } | null;
+  currentOrgUnit: { code: string; id: string; name: string; publicId: string | null } | null;
   displayName: string;
-  dottedLineManagers: Array<{ displayName: string; id: string }>;
+  dottedLineManagers: Array<{ displayName: string; id: string; publicId: string | null }>;
   grade: string | null;
   hiredAt: string | null;
   id: string;
+  publicId: string | null;
   lifecycleStatus: string;
   primaryEmail: string | null;
   resourcePoolIds: string[];

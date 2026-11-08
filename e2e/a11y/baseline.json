@@ -1,0 +1,6 @@
+{
+  "$schema": "./baseline.schema.json",
+  "description": "Allowed axe-core violations on v2 pages and DS atoms. Each entry is a fingerprint of an accepted violation. Future PRs MUST NOT add new fingerprints unless explicitly approved via e2e/a11y/scripts/refresh-baseline.cjs. See e2e/README.md (V2 axe A11y Baseline) for the policy.",
+  "generatedAt": null,
+  "violations": []
+}

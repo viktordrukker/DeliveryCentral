@@ -14,7 +14,11 @@ export class InMemoryTeamStore extends TeamStorePort {
     super();
   }
 
-  public async addMember(teamId: string, personId: string): Promise<TeamMembershipRecord> {
+  public async addMember(
+    teamId: string,
+    personId: string,
+    _actorId?: string | null,
+  ): Promise<TeamMembershipRecord> {
     const membership: TeamMembershipRecord = {
       id: randomUUID(),
       personId,
@@ -31,6 +35,7 @@ export class InMemoryTeamStore extends TeamStorePort {
     description?: string;
     name: string;
     orgUnitId?: string;
+    actorId?: string | null;
   }): Promise<TeamRecord> {
     const team: TeamRecord = {
       code: input.code,
@@ -72,6 +77,7 @@ export class InMemoryTeamStore extends TeamStorePort {
   public async removeMember(
     teamId: string,
     personId: string,
+    _actorId?: string | null,
   ): Promise<TeamMembershipRecord | null> {
     const membership = await this.findActiveMembership(teamId, personId);
 

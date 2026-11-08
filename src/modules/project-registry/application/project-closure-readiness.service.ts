@@ -39,9 +39,14 @@ export class ProjectClosureReadinessService {
 
     const blockers: string[] = [];
 
-    // 1. Active assignments
-    const activeAssignmentCount = await this.prisma.projectAssignment.count({
-      where: { projectId, status: { in: ['CREATED', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
+    // 1. Active assignments — SoT PR 14b: sourced from canonical `ProjectPosition`
+    // (`fillStatus in OPEN/PROPOSED/BOOKED/ONBOARDING/ASSIGNED/ON_HOLD`) instead
+    // of legacy `ProjectAssignment.status`.
+    const activeAssignmentCount = await this.prisma.projectPosition.count({
+      where: {
+        projectId,
+        fillStatus: { in: ['OPEN', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+      },
     });
     if (activeAssignmentCount > 0) {
       blockers.push(`${activeAssignmentCount} active assignment(s) still open.`);
@@ -89,15 +94,22 @@ export class ProjectClosureReadinessService {
       }
     }
 
-    // 5. Open staffing alerts (key roles unfilled)
+    // 5. Open staffing alerts (key roles unfilled) — SoT PR 14b: sourced from
+    // `ProjectPosition` (`fillStatus in BOOKED/ONBOARDING/ASSIGNED/ON_HOLD`)
+    // instead of legacy `ProjectAssignment`. `role` field on `ProjectPosition`
+    // is the lean equivalent of legacy `ProjectAssignment.staffingRole`.
     const rolePlan = await this.prisma.projectRolePlan.findMany({ where: { projectId } });
-    const assignments = await this.prisma.projectAssignment.findMany({
-      where: { projectId, status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
+    const filledPositions = await this.prisma.projectPosition.findMany({
+      where: {
+        projectId,
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+      },
+      select: { role: true },
     });
     let openAlertCount = 0;
     for (const plan of rolePlan) {
-      const filled = assignments.filter(
-        (a) => a.staffingRole.toLowerCase() === plan.roleName.toLowerCase(),
+      const filled = filledPositions.filter(
+        (p) => p.role.toLowerCase() === plan.roleName.toLowerCase(),
       ).length;
       if (filled < plan.headcount) openAlertCount++;
     }

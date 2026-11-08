@@ -100,11 +100,11 @@ function OnboardingScheduleModalInner({
           invalid={isInvalid}
         />
       </FormField>
-      <FormField label="Assignment start date" hint="Read-only — the assignment's planned start.">
+      <FormField label="Position start date" hint="Read-only — the position's planned start.">
         <DatePicker
           value={startDateOnly}
           onValueChange={() => undefined}
-          aria-label="Assignment start date"
+          aria-label="Position start date"
           disabled
         />
       </FormField>

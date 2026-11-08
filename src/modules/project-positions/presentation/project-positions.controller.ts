@@ -19,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 
+import { AggregateType, ParsePublicIdOrUuid } from '@src/infrastructure/public-id';
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import {
@@ -48,6 +49,10 @@ import { CreateProjectPositionService } from '../application/create-project-posi
 import { GetProjectPositionByIdService } from '../application/get-project-position-by-id.service';
 import { ListBenchPeopleService } from '../application/list-bench-people.service';
 import { ListEnrichedBenchService } from '../application/list-enriched-bench.service';
+import {
+  ListPositionHistoryService,
+  PositionHistoryResponseDto,
+} from '../application/list-position-history.service';
 import { ListProjectPositionsService } from '../application/list-project-positions.service';
 import {
   PositionForensicsDto,
@@ -83,6 +88,7 @@ export class ProjectPositionsController {
     private readonly getService: GetProjectPositionByIdService,
     private readonly suggestFillsService: SuggestFillsService,
     private readonly forensicsService: PositionForensicsService,
+    private readonly historyService: ListPositionHistoryService,
     private readonly bulkReassignService: BulkReassignPositionsService,
   ) {}
 
@@ -108,11 +114,14 @@ export class ProjectPositionsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a project position by id' })
+  @ApiOperation({ summary: 'Get a project position by id or publicId' })
   @ApiOkResponse({ type: ProjectPositionResponseDto })
   @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   public async getById(
-    @Param('id', ParseUUIDPipe) id: string,
+    // W1-11 transitional pipe — accepts both legacy uuid and `pos_…` publicId
+    // so the FE can flip URLs incrementally. Flip to strict ParsePublicId
+    // once all deep-link emitters have shipped.
+    @Param('id', ParsePublicIdOrUuid(AggregateType.ProjectPosition)) id: string,
   ): Promise<ProjectPositionResponseDto> {
     const position = await this.getService.execute(id);
     return ProjectPositionResponseDto.from(position);
@@ -127,9 +136,25 @@ export class ProjectPositionsController {
   @ApiNotFoundResponse({ description: 'Position not found.' })
   @RequireRoles(...STAFFING_ROLES)
   public async forensics(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParsePublicIdOrUuid(AggregateType.ProjectPosition)) id: string,
   ): Promise<PositionForensicsDto> {
     return this.forensicsService.execute(id);
+  }
+
+  @Get(':id/history')
+  @ApiOperation({
+    summary:
+      'W2-04 — lean ProjectPositionFillHistory ledger ordered oldest-first. ' +
+      'Lighter than `/forensics` (no dwell-time computation); used by the ' +
+      'position detail page lifecycle timeline.',
+  })
+  @ApiOkResponse({ description: 'Position lifecycle history.' })
+  @ApiNotFoundResponse({ description: 'Position not found.' })
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
+  public async history(
+    @Param('id', ParsePublicIdOrUuid(AggregateType.ProjectPosition)) id: string,
+  ): Promise<PositionHistoryResponseDto> {
+    return this.historyService.execute(id);
   }
 
   @Get(':id/candidates')
@@ -140,7 +165,7 @@ export class ProjectPositionsController {
   @ApiOkResponse({ type: PositionCandidatesResponseDto })
   @RequireRoles(...STAFFING_ROLES)
   public async candidates(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParsePublicIdOrUuid(AggregateType.ProjectPosition)) id: string,
     @Query('limit') limit?: string,
   ): Promise<PositionCandidatesResponseDto> {
     const parsed = limit ? Number.parseInt(limit, 10) : undefined;
@@ -204,7 +229,7 @@ export class ProjectPositionsController {
   @ApiOkResponse({ type: ProjectPositionResponseDto })
   @RequireRoles(...STAFFING_ROLES)
   public async transition(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParsePublicIdOrUuid(AggregateType.ProjectPosition)) id: string,
     @Body() body: TransitionProjectPositionFillRequestDto,
     @Req() request: RequestWithPrincipal,
   ): Promise<ProjectPositionResponseDto> {

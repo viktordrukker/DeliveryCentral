@@ -110,7 +110,7 @@ export function RmActionItems({
       detail: <span style={{ fontSize: 11 }}>{item.projectName}</span> as React.ReactNode,
       alloc: <span style={NUM}>{'—'}</span> as React.ReactNode,
       action: 'Review & approve',
-      linkTo: `/assignments/${item.assignmentId}`,
+      linkTo: `/projects/${item.projectId}?position=${item.assignmentId}`,
       ageHours: hoursSince(item.requestedAt),
     })),
     ...incomingRequests.map((req, i) => ({
@@ -119,7 +119,7 @@ export function RmActionItems({
       index: overallocated.length + pendingApprovals.length + i + 1,
       severityLabel: 'Info',
       severityColor: 'var(--color-status-info)',
-      category: 'Staffing Request',
+      category: 'Position',
       entity: req.role,
       detail: (
         <span style={{ fontSize: 11 }}>
@@ -132,7 +132,7 @@ export function RmActionItems({
         </span>
       ) as React.ReactNode,
       action: 'Review & fill',
-      linkTo: `/staffing-requests/${req.id}`,
+      linkTo: `/projects/${req.projectId}?position=${req.id}`,
       ageHours: null, // DTO doesn't ship createdAt yet
     })),
   ];
@@ -140,7 +140,7 @@ export function RmActionItems({
   return (
     <div className="dash-action-section" style={{ position: 'relative' }}>
       <TipBalloon
-        tip="Items needing attention — overallocations, pending approvals, and incoming staffing requests. Click any row to act."
+        tip="Items needing attention — overallocations, pending approvals, and incoming positions. Click any row to act."
         arrow="left"
       />
       <div className="dash-action-section__header">

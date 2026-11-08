@@ -56,9 +56,13 @@ export class PositionForensicsService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
   ) {}
 
-  public async execute(positionId: string, now: Date = new Date()): Promise<PositionForensicsDto> {
+  public async execute(idOrPublicId: string, now: Date = new Date()): Promise<PositionForensicsDto> {
+    // W1-11 — accept both legacy uuid and `pos_…` publicId.
+    const where = /^pos_[A-Za-z0-9]{10,}$/.test(idOrPublicId)
+      ? { publicId: idOrPublicId }
+      : { id: idOrPublicId };
     const position = await this.prisma.projectPosition.findUnique({
-      where: { id: positionId },
+      where,
       select: {
         id: true,
         projectId: true,
@@ -82,7 +86,7 @@ export class PositionForensicsService {
     });
 
     if (!position) {
-      throw new NotFoundException(`ProjectPosition ${positionId} not found.`);
+      throw new NotFoundException(`ProjectPosition ${idOrPublicId} not found.`);
     }
 
     const events: PositionForensicsEventDto[] = position.fillHistory.map((event, index) => {

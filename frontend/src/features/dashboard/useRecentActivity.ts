@@ -9,10 +9,13 @@ interface UseRecentActivityOptions {
   limit?: number;
 }
 
+// SoT PR 14 — activity filters target the lean `ProjectPosition` aggregate
+// only. Legacy `Assignment` and `StaffingRequest` target types are dropped
+// (positions are the canonical staffing entity in V2).
 const TARGET_SETS: Record<RecentActivityRole, Set<string>> = {
   director: new Set(['Project', 'ProjectHealth', 'Budget']),
-  pm: new Set(['Project', 'Assignment', 'StaffingRequest']),
-  rm: new Set(['ResourcePool', 'StaffingRequest', 'Assignment', 'Person']),
+  pm: new Set(['Project', 'ProjectPosition']),
+  rm: new Set(['ResourcePool', 'ProjectPosition', 'Person']),
   hr: new Set(['Person', 'Case', 'LeaveRequest']),
 };
 

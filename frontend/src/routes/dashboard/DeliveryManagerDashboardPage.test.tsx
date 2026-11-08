@@ -129,8 +129,10 @@ describe('DeliveryManagerDashboardPage', () => {
           weekStartIso: '2026-06-08T00:00:00.000Z',
           totalAllocationPct: 150,
           conflictPositions: [
-            { positionId: 'pos-x', projectId: 'proj-a', projectCode: 'A', allocationPct: 100 },
-            { positionId: 'pos-y', projectId: 'proj-b', projectCode: 'B', allocationPct: 50 },
+            // W1-11 — first row has a publicId; the link prefers it. Second row
+            // has no publicId so the link falls back to the raw id.
+            { positionId: 'pos-x', positionPublicId: 'pos_xxx111', projectId: 'proj-a', projectCode: 'A', allocationPct: 100 },
+            { positionId: 'pos-y', positionPublicId: null, projectId: 'proj-b', projectCode: 'B', allocationPct: 50 },
           ],
         },
       ],
@@ -141,9 +143,13 @@ describe('DeliveryManagerDashboardPage', () => {
 
     expect(await screen.findByText('Alice Acker')).toBeInTheDocument();
     expect(screen.getByText('150%')).toBeInTheDocument();
-    // Drill-down link to one of the offending positions is present.
+    // W1-11 — drill-down deep-link uses the publicId when present, the raw
+    // positionId otherwise. Route is /positions/:id (lean canonical) — the
+    // backend pipe accepts either shape.
     const aLink = screen.getByText(/A \(100%\)/);
-    expect(aLink.closest('a')).toHaveAttribute('href', '/project-positions/pos-x');
+    expect(aLink.closest('a')).toHaveAttribute('href', '/positions/pos_xxx111');
+    const bLink = screen.getByText(/B \(50%\)/);
+    expect(bLink.closest('a')).toHaveAttribute('href', '/positions/pos-y');
 
     vi.mocked(featureFlags.isFeatureEnabled).mockReturnValue(false);
   });

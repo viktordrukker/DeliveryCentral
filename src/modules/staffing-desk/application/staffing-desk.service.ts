@@ -58,15 +58,29 @@ export class StaffingDeskService {
     for (const a of assignmentRows) projectIdsForLookups.add(a.projectId);
     for (const r of requestRows) projectIdsForLookups.add(r.projectId);
 
-    // Batch-load ALL assignments for all unique person IDs (for inline timeline rendering).
-    // Run before fetchLookups so timeline-referenced projects appear in projectsById.
+    // SoT PR 14b — canonical read from ProjectPosition for inline timeline rendering.
     const uniquePersonIds = [...new Set(assignmentRows.map((a) => a.personId))];
-    const allPersonAssignments = uniquePersonIds.length > 0
-      ? await this.prisma.projectAssignment.findMany({
-          where: { personId: { in: uniquePersonIds } },
-          select: { personId: true, projectId: true, allocationPercent: true, validFrom: true, validTo: true, status: true },
+    const allPersonPositions = uniquePersonIds.length > 0
+      ? await this.prisma.projectPosition.findMany({
+          where: { activePersonId: { in: uniquePersonIds } },
+          select: {
+            activePersonId: true, projectId: true, activeAllocationPercent: true,
+            activeValidFrom: true, activeValidTo: true, fillStatus: true,
+          },
         })
       : [];
+    const allPersonAssignments = allPersonPositions
+      .filter((p): p is typeof p & { activePersonId: string; activeValidFrom: Date } =>
+        p.activePersonId !== null && p.activeValidFrom !== null,
+      )
+      .map((p) => ({
+        personId: p.activePersonId,
+        projectId: p.projectId,
+        allocationPercent: p.activeAllocationPercent,
+        validFrom: p.activeValidFrom,
+        validTo: p.activeValidTo,
+        status: p.fillStatus as string,
+      }));
     for (const pa of allPersonAssignments) projectIdsForLookups.add(pa.projectId);
 
     const lookups = await this.fetchLookups(
@@ -82,11 +96,40 @@ export class StaffingDeskService {
       arr.push(a);
     }
 
+    // W1-11 — batch-resolve ProjectPosition.publicId for each desk row so the
+    // frontend can deep-link via the opaque identifier. `legacyAssignmentId`
+    // and `legacyStaffingRequestId` index columns on ProjectPosition map back
+    // to the row.id used by this view.
+    const assignmentIdSet = assignmentRows.map((a) => a.id);
+    const requestIdSet = requestRows.map((r) => r.id);
+    const positionPublicIdByAssignmentId = new Map<string, string | null>();
+    const positionPublicIdByRequestId = new Map<string, string | null>();
+    if (assignmentIdSet.length > 0 || requestIdSet.length > 0) {
+      const positions = await this.prisma.projectPosition.findMany({
+        where: {
+          OR: [
+            assignmentIdSet.length > 0 ? { legacyAssignmentId: { in: assignmentIdSet } } : null,
+            requestIdSet.length > 0 ? { legacyStaffingRequestId: { in: requestIdSet } } : null,
+          ].filter((c): c is NonNullable<typeof c> => c !== null),
+        },
+        select: { publicId: true, legacyAssignmentId: true, legacyStaffingRequestId: true },
+      });
+      for (const p of positions) {
+        if (p.legacyAssignmentId) {
+          positionPublicIdByAssignmentId.set(p.legacyAssignmentId, p.publicId ?? null);
+        }
+        if (p.legacyStaffingRequestId) {
+          positionPublicIdByRequestId.set(p.legacyStaffingRequestId, p.publicId ?? null);
+        }
+      }
+    }
+
     // Map assignments to unified rows
     const assignmentMapped: StaffingDeskRowDto[] = assignmentRows.map((a) => {
       const pm = peopleById.get(a.personId);
       return {
         id: a.id,
+        positionPublicId: positionPublicIdByAssignmentId.get(a.id) ?? null,
         kind: 'assignment' as const,
         projectId: a.projectId,
         projectName: projectsById.get(a.projectId) ?? a.projectId,
@@ -127,6 +170,7 @@ export class StaffingDeskService {
     // Map requests to unified rows
     const requestMapped: StaffingDeskRowDto[] = requestRows.map((r) => ({
       id: r.id,
+      positionPublicId: positionPublicIdByRequestId.get(r.id) ?? null,
       kind: 'request' as const,
       projectId: r.projectId,
       projectName: projectsById.get(r.projectId) ?? r.projectId,
@@ -234,23 +278,54 @@ export class StaffingDeskService {
     }
     if (dto.role) where.staffingRole = { contains: dto.role, mode: 'insensitive' };
 
-    return this.prisma.projectAssignment.findMany({
-      where,
+    // SoT PR 14b — canonical read from ProjectPosition (active-fill positions).
+    // The where clause built above uses legacy field names (personId, status,
+    // allocationPercent, validFrom, validTo, staffingRole). Translate to canonical.
+    const canonicalWhere: Record<string, unknown> = {};
+    canonicalWhere.activePersonId = { not: null };
+    if ('status' in where) canonicalWhere.fillStatus = where.status;
+    if ('projectId' in where) canonicalWhere.projectId = where.projectId;
+    if ('personId' in where) canonicalWhere.activePersonId = where.personId;
+    if ('validTo' in where) canonicalWhere.activeValidTo = where.validTo;
+    if ('validFrom' in where) canonicalWhere.activeValidFrom = where.validFrom;
+    if ('allocationPercent' in where) canonicalWhere.activeAllocationPercent = where.allocationPercent;
+    if ('staffingRole' in where) canonicalWhere.role = where.staffingRole;
+
+    const positions = await this.prisma.projectPosition.findMany({
+      where: canonicalWhere,
       select: {
         id: true,
-        personId: true,
+        activePersonId: true,
         projectId: true,
-        staffingRole: true,
-        status: true,
-        allocationPercent: true,
-        validFrom: true,
-        validTo: true,
-        requestedAt: true,
-        assignmentCode: true,
+        role: true,
+        fillStatus: true,
+        activeAllocationPercent: true,
+        activeValidFrom: true,
+        activeValidTo: true,
+        createdAt: true,
+        legacyAssignmentId: true,
       },
-      orderBy: { validFrom: 'desc' },
+      orderBy: { activeValidFrom: 'desc' },
       take: STAFFING_DESK_FETCH_LIMIT,
     });
+    return positions
+      .filter((p): p is typeof p & { activePersonId: string; activeValidFrom: Date } =>
+        p.activePersonId !== null && p.activeValidFrom !== null,
+      )
+      .map((p) => ({
+        // Surface ProjectPosition.id so downstream positionPublicId lookup can join on it;
+        // legacyAssignmentId remains as historical join key.
+        id: p.legacyAssignmentId ?? p.id,
+        personId: p.activePersonId,
+        projectId: p.projectId,
+        staffingRole: p.role,
+        status: p.fillStatus as string,
+        allocationPercent: p.activeAllocationPercent,
+        validFrom: p.activeValidFrom,
+        validTo: p.activeValidTo,
+        requestedAt: p.createdAt,
+        assignmentCode: null as string | null,
+      }));
   }
 
   private async fetchRequests(
@@ -279,8 +354,34 @@ export class StaffingDeskService {
     if (dto.role) where.role = { contains: dto.role, mode: 'insensitive' };
     if (skillList.length) where.skills = { hasSome: skillList };
 
-    return this.prisma.staffingRequest.findMany({
-      where,
+    // SoT PR 14b — canonical read from ProjectPosition (open-demand positions).
+    // Legacy StaffingRequest status values DRAFT/OPEN/IN_REVIEW/FULFILLED/CANCELLED
+    // map to ProjectPosition.fillStatus values. FULFILLED ~ BOOKED, IN_REVIEW ~ PROPOSED.
+    const LEGACY_TO_FILL: Record<string, string> = {
+      DRAFT: 'DRAFT',
+      OPEN: 'OPEN',
+      IN_REVIEW: 'PROPOSED',
+      FULFILLED: 'BOOKED',
+      CANCELLED: 'RELEASED',
+    };
+    const canonicalWhere: Record<string, unknown> = {};
+    if ('status' in where) {
+      const statusFilter = where.status as { in?: string[] };
+      if (statusFilter && Array.isArray(statusFilter.in)) {
+        const mapped = statusFilter.in.map((s) => LEGACY_TO_FILL[s] ?? s);
+        canonicalWhere.fillStatus = { in: mapped };
+      }
+    }
+    if ('priority' in where) canonicalWhere.priority = where.priority;
+    if ('projectId' in where) canonicalWhere.projectId = where.projectId;
+    if ('endDate' in where) canonicalWhere.endDate = where.endDate;
+    if ('startDate' in where) canonicalWhere.startDate = where.startDate;
+    if ('allocationPercent' in where) canonicalWhere.requiredAllocationPercent = where.allocationPercent;
+    if ('role' in where) canonicalWhere.role = where.role;
+    if ('skills' in where) canonicalWhere.skills = where.skills;
+
+    const positions = await this.prisma.projectPosition.findMany({
+      where: canonicalWhere,
       select: {
         id: true,
         projectId: true,
@@ -288,18 +389,48 @@ export class StaffingDeskService {
         role: true,
         skills: true,
         summary: true,
-        allocationPercent: true,
-        headcountRequired: true,
-        headcountFulfilled: true,
+        requiredAllocationPercent: true,
         priority: true,
-        status: true,
+        fillStatus: true,
         startDate: true,
         endDate: true,
         createdAt: true,
+        legacyStaffingRequestId: true,
+        activePersonId: true,
       },
       orderBy: { createdAt: 'desc' },
       take: STAFFING_DESK_FETCH_LIMIT,
     });
+    // Canonical model: 1 row = 1 headcount. Filled (BOOKED+activePersonId) =>
+    // headcountFulfilled:1; else 0. Map back to legacy shape for downstream.
+    const FILL_TO_LEGACY: Record<string, string> = {
+      DRAFT: 'DRAFT',
+      OPEN: 'OPEN',
+      PROPOSED: 'IN_REVIEW',
+      BOOKED: 'FULFILLED',
+      ONBOARDING: 'FULFILLED',
+      ASSIGNED: 'FULFILLED',
+      ON_HOLD: 'FULFILLED',
+      RELEASED: 'CANCELLED',
+    };
+    return positions.map((p) => ({
+      // Use legacyStaffingRequestId when present so positionPublicId resolution joins;
+      // otherwise the position.id itself flows through (post-cutover, only ID is the position).
+      id: p.legacyStaffingRequestId ?? p.id,
+      projectId: p.projectId,
+      requestedByPersonId: p.requestedByPersonId ?? '',
+      role: p.role,
+      skills: p.skills,
+      summary: p.summary,
+      allocationPercent: p.requiredAllocationPercent,
+      headcountRequired: 1,
+      headcountFulfilled: p.activePersonId ? 1 : 0,
+      priority: p.priority,
+      status: FILL_TO_LEGACY[p.fillStatus] ?? p.fillStatus,
+      startDate: p.startDate,
+      endDate: p.endDate,
+      createdAt: p.createdAt,
+    }));
   }
 
   private async resolvePersonScope(dto: StaffingDeskQueryDto): Promise<Set<string> | null> {
@@ -482,35 +613,33 @@ export class StaffingDeskService {
       if (canonicalBench.has(p.id)) benchCount++;
     }
 
-    // Demand: open/in-review requests
-    const openWhere: Record<string, unknown> = { status: { in: ['OPEN', 'IN_REVIEW'] } };
+    // SoT PR 14b — canonical demand read from ProjectPosition.
+    // Open demand (legacy OPEN/IN_REVIEW => canonical OPEN/PROPOSED).
+    const openWhere: Record<string, unknown> = { fillStatus: { in: ['OPEN', 'PROPOSED'] } };
     if (dto.projectId) openWhere.projectId = dto.projectId;
-    const openRequests = await this.prisma.staffingRequest.findMany({
+    const openPositions = await this.prisma.projectPosition.findMany({
       where: openWhere,
-      select: { headcountRequired: true, headcountFulfilled: true, createdAt: true },
+      select: { activePersonId: true, createdAt: true },
     });
 
-    let totalHcRequired = 0;
-    let hcFulfilled = 0;
-    for (const r of openRequests) {
-      totalHcRequired += r.headcountRequired;
-      hcFulfilled += r.headcountFulfilled;
-    }
+    // Canonical model: 1 row = 1 headcount. Open position = required:1, fulfilled:0.
+    let totalHcRequired = openPositions.length;
+    let hcFulfilled = openPositions.filter((p) => p.activePersonId).length;
     const headcountOpen = totalHcRequired - hcFulfilled;
 
-    // Fill rate from fulfilled requests
-    const fulfilledRequests = await this.prisma.staffingRequest.findMany({
-      where: { status: 'FULFILLED' },
-      select: { headcountRequired: true, headcountFulfilled: true, createdAt: true, updatedAt: true },
+    // Fill rate from booked positions (was: status=FULFILLED staffing requests).
+    const fulfilledPositions = await this.prisma.projectPosition.findMany({
+      where: { fillStatus: 'BOOKED', activePersonId: { not: null } },
+      select: { createdAt: true, updatedAt: true },
     });
-    let totalFulfilledHc = 0;
-    let totalFulfilledRequired = 0;
+    let totalFulfilledHc = fulfilledPositions.length;
+    let totalFulfilledRequired = fulfilledPositions.length;
     let totalDaysToFulfil = 0;
-    for (const r of fulfilledRequests) {
-      totalFulfilledHc += r.headcountFulfilled;
-      totalFulfilledRequired += r.headcountRequired;
+    for (const r of fulfilledPositions) {
       totalDaysToFulfil += Math.max(0, (r.updatedAt.getTime() - r.createdAt.getTime()) / 86400000);
     }
+    // Keep variable name compatible with bottom-of-method math.
+    const fulfilledRequests = fulfilledPositions;
 
     const allRequiredHc = totalFulfilledRequired + totalHcRequired;
     const allFulfilledHc = totalFulfilledHc + hcFulfilled;

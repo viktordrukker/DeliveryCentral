@@ -1,11 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { PersonDirectoryQueryService } from '@src/modules/organization/application/person-directory-query.service';
 import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { InMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
+import { loadAllPositionAssignmentViews } from '@src/shared/persistence/position-assignment-view';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
-
-import { InMemoryStaffingRequestService } from '@src/modules/staffing-requests/infrastructure/services/in-memory-staffing-request.service';
 
 import { PlannedVsActualQueryService } from './planned-vs-actual-query.service';
 import { ProjectManagerDashboardResponseDto } from './contracts/project-manager-dashboard.dto';
@@ -15,14 +13,14 @@ interface ProjectManagerDashboardQuery {
   personId: string;
 }
 
+// SoT PR 14b — PM dashboard sources active fills + recent changes from
+// canonical `ProjectPosition` + `ProjectPositionFillHistory`.
 @Injectable()
 export class ProjectManagerDashboardQueryService {
   public constructor(
     private readonly personDirectoryQueryService: PersonDirectoryQueryService,
     private readonly projectRepository: InMemoryProjectRepository,
-    private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
     private readonly plannedVsActualQueryService: PlannedVsActualQueryService,
-    private readonly staffingRequestService: InMemoryStaffingRequestService,
     private readonly platformSettingsService: PlatformSettingsService,
     private readonly prisma: PrismaService,
   ) {}
@@ -51,7 +49,7 @@ export class ProjectManagerDashboardQueryService {
       .sort((left, right) => left.projectCode.localeCompare(right.projectCode));
     const managedProjectIds = new Set(managedProjects.map((project) => project.projectId.value));
 
-    const assignments = await this.projectAssignmentRepository.findAll();
+    const assignments = await loadAllPositionAssignmentViews(this.prisma);
     const activeAssignments = assignments.filter(
       (assignment) => managedProjectIds.has(assignment.projectId) && assignment.isActiveAt(asOf),
     );
@@ -107,29 +105,40 @@ export class ProjectManagerDashboardQueryService {
     );
 
     const managedAssignments = assignments.filter((assignment) => managedProjectIds.has(assignment.projectId));
-    const recentlyChangedAssignments = (
-      await Promise.all(
-        managedAssignments.map(async (assignment) => {
-          const history = await this.projectAssignmentRepository.findHistoryByAssignmentId(
-            assignment.assignmentId,
-          );
-
-          return history.map((item) => ({
-            assignmentId: assignment.assignmentId.value,
-            changedAt: item.occurredAt.toISOString(),
-            changeType: item.changeType,
-            personDisplayName:
-              peopleById.get(assignment.personId)?.displayName ?? assignment.personId,
-            personId: assignment.personId,
-            projectId: assignment.projectId,
-            projectName:
-              managedProjectMap.get(assignment.projectId)?.name ?? assignment.projectId,
-          }));
-        }),
-      )
-    )
-      .flat()
-      .sort((left, right) => right.changedAt.localeCompare(left.changedAt))
+    // SoT PR 14b — recently-changed source is canonical
+    // `ProjectPositionFillHistory`. Batch-fetch the most recent 5 history
+    // rows per managed position id (avoiding N+1).
+    const managedPositionIds = managedAssignments.map((a) => a.id);
+    const historyRows = managedPositionIds.length > 0
+      ? await this.prisma.projectPositionFillHistory.findMany({
+          where: { positionId: { in: managedPositionIds } },
+          select: {
+            positionId: true,
+            occurredAt: true,
+            changeType: true,
+          },
+          orderBy: { occurredAt: 'desc' },
+          take: 50,
+        })
+      : [];
+    const managedById = new Map(managedAssignments.map((a) => [a.id, a]));
+    const recentlyChangedAssignments = historyRows
+      .map((item) => {
+        const assignment = managedById.get(item.positionId);
+        if (!assignment) return null;
+        return {
+          assignmentId: assignment.id,
+          changedAt: item.occurredAt.toISOString(),
+          changeType: item.changeType,
+          personDisplayName:
+            peopleById.get(assignment.personId)?.displayName ?? assignment.personId,
+          personId: assignment.personId,
+          projectId: assignment.projectId,
+          projectName:
+            managedProjectMap.get(assignment.projectId)?.name ?? assignment.projectId,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
       .slice(0, 5);
 
     const attentionProjects = this.groupProjectAttentionItems([
@@ -144,23 +153,42 @@ export class ProjectManagerDashboardQueryService {
         })),
     ]);
 
-    const allRequests = await this.staffingRequestService.list({ status: 'OPEN' });
-    const openRequests = allRequests
-      .filter((request) => managedProjectIds.has(request.projectId))
-      .map((request) => ({
-        headcountFulfilled: request.headcountFulfilled,
-        headcountRequired: request.headcountRequired,
-        id: request.id,
-        priority: request.priority,
-        projectId: request.projectId,
-        role: request.role,
-        startDate: request.startDate,
-      }));
+    // SoT PR 14 — `openRequests` sources from `ProjectPosition` (lean canonical
+    // for unfilled demand). Each position is one headcount; `headcountFulfilled`
+    // is 1 when the row has an `activePersonId`, otherwise 0. Includes OPEN and
+    // PROPOSED fill statuses so the PM sees positions out for slate review.
+    const managedProjectIdList = [...managedProjectIds];
+    const openPositions = managedProjectIdList.length > 0
+      ? await this.prisma.projectPosition.findMany({
+          where: {
+            projectId: { in: managedProjectIdList },
+            fillStatus: { in: ['OPEN', 'PROPOSED'] },
+          },
+          select: {
+            id: true,
+            projectId: true,
+            role: true,
+            priority: true,
+            startDate: true,
+            activePersonId: true,
+          },
+          orderBy: { startDate: 'asc' },
+        })
+      : [];
+    const openRequests = openPositions.map((position) => ({
+      headcountFulfilled: position.activePersonId !== null ? 1 : 0,
+      headcountRequired: 1,
+      id: position.id,
+      priority: position.priority,
+      projectId: position.projectId,
+      role: position.role,
+      startDate: position.startDate.toISOString(),
+    }));
 
     return {
       asOf: asOf.toISOString(),
       attentionProjects,
-      dataSources: ['person_directory', 'projects', 'assignments', 'planned_vs_actual', 'timesheets', 'staffing_requests'],
+      dataSources: ['person_directory', 'projects', 'assignments', 'planned_vs_actual', 'timesheets', 'project_positions'],
       managedProjects: managedProjects.map((project) => {
         const projectId = project.projectId.value;
         return {

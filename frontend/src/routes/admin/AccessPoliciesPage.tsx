@@ -28,12 +28,21 @@ const ACTION_TONE: Record<string, StatusTone> = {
   approve: 'info',
 };
 
-export function AccessPoliciesPage(): JSX.Element {
+const SOP_DOC_HREF =
+  'https://github.com/viktordrukker/DeliveryCentral/blob/main/docs/runbooks/ACCESS_POLICIES_EDIT_SOP.md';
+
+/**
+ * W4-11 — exported headerless content for embedding under the consolidated
+ * `/admin/governance/roles` tabbed shell. Renders the page header inline so
+ * the tab host can compose without duplicating the action affordance.
+ */
+export function AccessPoliciesContent({ headerless = false }: { headerless?: boolean } = {}): JSX.Element {
   const [policies, setPolicies] = useState<AbacPolicySummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState('');
   const [resourceFilter, setResourceFilter] = useState('');
+  const adminRoleUiOn = isFeatureEnabled('adminRolePermissionUI');
 
   useEffect(() => {
     void httpGet<AbacPolicySummary[]>('/admin/access-policies')
@@ -57,27 +66,62 @@ export function AccessPoliciesPage(): JSX.Element {
   });
 
   return (
-    <PageContainer viewport>
-      <PageHeader
-        eyebrow="Admin"
-        subtitle="Active ABAC (Attribute-Based Access Control) policies governing data-level access restrictions."
-        title="Access Policies"
-        actions={
-          isFeatureEnabled('adminRolePermissionUI')
-            ? [
-                <Button
-                  key="edit-presets"
-                  as={Link}
-                  to="/admin/access-policies/edit"
-                  size="sm"
-                  variant="secondary"
-                >
-                  Edit role presets
-                </Button>,
-              ]
-            : undefined
-        }
-      />
+    <>
+      {headerless ? (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+          {adminRoleUiOn ? (
+            <Button as={Link} to="/admin/access-policies/edit" size="sm" variant="secondary">
+              Edit role presets
+            </Button>
+          ) : (
+            <Button
+              as="a"
+              href={SOP_DOC_HREF}
+              target="_blank"
+              rel="noreferrer noopener"
+              size="sm"
+              variant="secondary"
+              data-testid="edit-via-runbook-cta"
+            >
+              Edit access policies via the admin runbook
+            </Button>
+          )}
+        </div>
+      ) : (
+        <PageHeader
+          eyebrow="Admin"
+          subtitle="Active ABAC (Attribute-Based Access Control) policies governing data-level access restrictions."
+          title="Access Policies"
+          actions={
+            adminRoleUiOn
+              ? [
+                  <Button
+                    key="edit-presets"
+                    as={Link}
+                    to="/admin/access-policies/edit"
+                    size="sm"
+                    variant="secondary"
+                  >
+                    Edit role presets
+                  </Button>,
+                ]
+              : [
+                  <Button
+                    key="edit-runbook"
+                    as="a"
+                    href={SOP_DOC_HREF}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    size="sm"
+                    variant="secondary"
+                    data-testid="edit-via-runbook-cta"
+                  >
+                    Edit access policies via the admin runbook
+                  </Button>,
+                ]
+          }
+        />
+      )}
 
       {isLoading ? <LoadingState label="Loading access policies..." /> : null}
       {error ? <ErrorState description={error} /> : null}
@@ -130,9 +174,31 @@ export function AccessPoliciesPage(): JSX.Element {
               <code>src/modules/identity-access/application/abac/abac-policy.registry.ts</code>. Runtime overrides are
               applied via the ABAC registry and evaluated at the repository layer on each query.
             </div>
+            {adminRoleUiOn ? null : (
+              <div
+                data-testid="edit-via-runbook-note"
+                style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}
+              >
+                <strong>How to edit:</strong> the in-app editor is gated behind{' '}
+                <code>flag.feature.admin.rolePermissionUI.enabled</code> and remains OFF during soak.
+                Until it flips to GA, edit access policies via the{' '}
+                <a href={SOP_DOC_HREF} rel="noreferrer noopener" target="_blank" style={{ color: 'var(--color-accent)' }}>
+                  Access Policies Edit SOP
+                </a>
+                .
+              </div>
+            )}
           </SectionCard>
         </>
       ) : null}
+    </>
+  );
+}
+
+export function AccessPoliciesPage(): JSX.Element {
+  return (
+    <PageContainer viewport>
+      <AccessPoliciesContent />
     </PageContainer>
   );
 }

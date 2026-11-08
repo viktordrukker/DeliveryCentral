@@ -184,6 +184,20 @@ export const CAPITALISATION_ROLES: AppRole[] = ['delivery_manager', 'director', 
 export const EXPORT_CENTRE_ROLES: AppRole[] = ['hr_manager', 'delivery_manager', 'director', 'admin'];
 export const STAFFING_BOARD_ROLES: AppRole[] = ['resource_manager', 'delivery_manager', 'director', 'admin'];
 export const STAFFING_REQUEST_ROLES: AppRole[] = ['project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin'];
+// W1-23 — FE/BE alignment: BE `/staffing-requests/:id` is guarded by
+// `@RequireRoles(...STAFFING_ROLES)` (PM+RM+DM+director+admin). The FE route
+// guard now matches the same allowlist instead of `ALL_ROLES`.
+export const STAFFING_REQUEST_DETAIL_ROLES: AppRole[] = ['project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin'];
+// W1-25 — FE/BE alignment: BE `PeopleBenchController` uses
+// `@RequireRoles(...STAFFING_ROLES)` for the enriched bench listing. FE was
+// previously gated to `RESOURCE_POOL_ROLES` (RM+director+admin) which hid the
+// surface from PM/DM despite the BE accepting them. Aligned now.
+export const BENCH_PAGE_ROLES: AppRole[] = ['project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin'];
+// W1-26 — `/admin/notifications` was admin+director already; W1-26 keeps the
+// surface director-readable (no change here, see DIRECTOR_ADMIN_ROLES).
+// W1-26 — `/admin/monitoring` widened from `ADMIN_ONLY_ROLES` to include
+// director so executives can observe platform health without admin role.
+export const MONITORING_ROLES: AppRole[] = ['director', 'admin'];
 export const STAFFING_DESK_ROLES: AppRole[] = ['resource_manager', 'project_manager', 'delivery_manager', 'director', 'admin'];
 // /approvals merges leave + case approvals (HR-governed) with staffing-side
 // approvals, so HR must be allowed in alongside the staffing roles. Mirrors
@@ -245,6 +259,10 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: HR_DASHBOARD_ROLES, description: 'Organization-centric dashboard for headcount, distribution, and people-data quality.', flag: 'dashHr', group: 'dashboard', navVisible: false, path: '/dashboard/hr', title: 'HR Dashboard' },
   { allowedRoles: DELIVERY_DASHBOARD_ROLES, description: 'Team delivery dashboard for anomaly drilldown and delivery metrics.', flag: 'dashDeliveryManager', group: 'dashboard', navVisible: false, path: '/dashboard/delivery-manager', title: 'Delivery Dashboard' },
   { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'Executive dashboard for delivery health, capacity, and portfolio risk.', flag: 'dashDirector', group: 'dashboard', navVisible: false, path: '/dashboard/director', title: 'Director Dashboard' },
+  // W1-01 — short-form dashboard aliases (redirect-only entries).
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/dashboard/dm' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/dashboard/pm' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/dashboard/rm' },
   { allowedRoles: DELIVERY_DASHBOARD_ROLES, description: 'Portfolio-wide radiator scores across all projects.', group: 'dashboard', navVisible: true, obsoleteInV2: true, path: '/dashboards/portfolio-radiator', title: 'Portfolio Radiator' },
   { allowedRoles: ADMIN_ROLES, description: 'Configure scoring thresholds for the 16-axis project radiator.', group: 'admin-config', navVisible: true, obsoleteInV2: true, path: '/admin/radiator-thresholds', title: 'Radiator Thresholds' },
   { allowedRoles: ADMIN_ROLES, description: 'Organization-wide reporting cadence, exception thresholds, governance and risk cadence.', group: 'admin-config', navVisible: true, obsoleteInV2: true, path: '/admin/organization-config', title: 'Organization Config' },
@@ -252,10 +270,12 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: ALL_ROLES, path: '/org/managers/:id/scope' },
   { allowedRoles: HR_ADMIN_ROLES, path: '/admin/people/new' },
   { allowedRoles: ALL_ROLES, description: 'People directory and manager visibility.', group: 'people-org', navVisible: true, path: '/people', title: 'People' },
-  { allowedRoles: RESOURCE_POOL_ROLES, description: 'People with no active project assignment — sorted by days off project.', group: 'people-org', navVisible: true, path: '/people/bench', title: 'Bench', titleV2: 'Bench' },
+  { allowedRoles: BENCH_PAGE_ROLES, description: 'People with no active project assignment — sorted by days off project.', group: 'people-org', navVisible: true, path: '/people/bench', title: 'Bench', titleV2: 'Bench' },
   { allowedRoles: HR_ADMIN_ROLES, path: '/people/new' },
   { allowedRoles: EXCEPTIONS_ROLES, description: 'Unified operational queue for staffing, project, and time-compliance anomalies.', group: 'reports', navVisible: true, obsoleteInV2: true, path: '/exceptions', title: 'Exceptions' },
   { allowedRoles: APPROVALS_ROLES, description: 'Unified approvals across position proposals, budgets, activations, leave, cases, and skill reviews.', flag: 'dsRefresh', group: 'staffing', navVisible: true, path: '/approvals', title: 'Approvals' },
+  // W1-04 — legacy /approvals/queue URL kept for redirect (manifest-tracked).
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/approvals/queue' },
   { allowedRoles: ALL_ROLES, description: 'Operational team management distinct from the organization hierarchy.', group: 'people-org', navVisible: true, obsoleteInV2: true, path: '/teams', title: 'Teams' },
   { allowedRoles: ALL_ROLES, path: '/teams/:id/dashboard' },
   { allowedRoles: ALL_ROLES, path: '/people/:id' },
@@ -265,14 +285,26 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: ALL_ROLES, path: '/projects/:id/dashboard' },
   // LEAN-P2 exit-gate: legacy /assignments surfaces deleted; entries kept
   // for the route registry (the router redirects them) but hidden from nav.
-  { allowedRoles: ALL_ROLES, navVisible: false, path: '/assignments' },
-  { allowedRoles: ALL_ROLES, navVisible: false, path: '/assignments/new' },
-  { allowedRoles: ALL_ROLES, navVisible: false, path: '/assignments/bulk' },
-  { allowedRoles: ALL_ROLES, navVisible: false, path: '/assignments/queue' },
+  // W1-21: /assignments/new is permanently routed to /staffing-requests/new.
+  { allowedRoles: ALL_ROLES, navVisible: false, obsoleteInV2: true, path: '/assignments' },
+  { allowedRoles: ALL_ROLES, navVisible: false, obsoleteInV2: true, path: '/assignments/new' },
+  { allowedRoles: ALL_ROLES, navVisible: false, obsoleteInV2: true, path: '/assignments/bulk' },
+  { allowedRoles: ALL_ROLES, navVisible: false, obsoleteInV2: true, path: '/assignments/queue' },
   { allowedRoles: ALL_ROLES, path: '/assignments/:id' },
   { allowedRoles: ALL_ROLES, path: '/settings/account' },
   { allowedRoles: ALL_ROLES, path: '/notifications' },
   { allowedRoles: ALL_ROLES, description: 'Unified self-service workspace — Overview, Time, Leave, Projects, Inbox, Settings.', flag: 'workspaceMe', group: 'time', navVisible: true, titleV2: 'Home', path: '/me', title: 'My Workspace' },
+  // W1-02 — short-form /me/:tab aliases (redirect-only entries) for deep-link
+  // muscle memory. Each resolves to /me?tab=... inside the workspace shell.
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/overview' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/time' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/leave' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/projects' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/skills' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/inbox' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/profile' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/settings' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/cases' },
   { allowedRoles: RESOURCE_POOL_ROLES, description: 'Named pools of people available for staffing allocation.', group: 'staffing', navVisible: true, obsoleteInV2: true, path: '/resource-pools', title: 'Resource Pools' },
   { allowedRoles: RESOURCE_POOL_ROLES, path: '/resource-pools/:id' },
   { allowedRoles: EVIDENCE_MANAGEMENT_ROLES, description: 'Observed-work records, source review, and specialist diagnostics.', group: 'reports', navVisible: true, obsoleteInV2: true, path: '/work-evidence', title: 'Evidence Management' },
@@ -298,7 +330,9 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: STAFFING_DESK_ROLES, description: 'Unified staffing operations console — flagship RM-centric surface with Board (?view=board) + Distribution Studio (?view=planner) views.', flag: 'dsRefresh', group: 'staffing', navVisible: true, titleV2: 'Staffing Desk', path: '/staffing-desk', title: 'Staffing Desk' },
   { allowedRoles: STAFFING_DESK_ROLES, navVisible: false, path: '/staffing-requests/new' },
   { allowedRoles: STAFFING_DESK_ROLES, navVisible: false, path: '/staffing-desk/positions/new' },
-  { allowedRoles: ALL_ROLES, path: '/staffing-requests/:id' },
+  // W2-05 — bulk "open multiple positions at once" surface for PM/RM.
+  { allowedRoles: STAFFING_DESK_ROLES, navVisible: false, path: '/staffing-requests/bulk' },
+  { allowedRoles: STAFFING_REQUEST_DETAIL_ROLES, path: '/staffing-requests/:id' },
   { allowedRoles: CASE_CREATE_ROLES, path: '/cases/new' },
   { allowedRoles: ALL_ROLES, path: '/cases/:id' },
   { allowedRoles: ADMIN_ROLES, description: 'Consolidated operator-facing control surface for configuration and platform settings.', group: 'admin-config', navVisible: true, path: '/admin', title: 'Admin' },
@@ -310,7 +344,10 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'Notification channel and template management.', group: 'admin-governance', navVisible: true, obsoleteInV2: true, path: '/admin/notifications', title: 'Admin Notifications' },
   { allowedRoles: ADMIN_ONLY_ROLES, description: 'External provider health and synchronization.', group: 'admin-integrations', navVisible: true, obsoleteInV2: true, path: '/admin/integrations', title: 'Admin Integrations' },
   { allowedRoles: ADMIN_ONLY_ROLES, description: 'Uniform registry of every adapter (Jira, M365, RADIUS, JSM, LDAP, LLM) with status and last-sync.', group: 'admin-integrations', navVisible: true, obsoleteInV2: true, path: '/admin/integrations/registry', title: 'Integrations Registry' },
-  { allowedRoles: ADMIN_ONLY_ROLES, description: 'Read-only health, readiness, and diagnostics visibility.', group: 'admin-integrations', navVisible: true, obsoleteInV2: true, path: '/admin/monitoring', title: 'Admin Monitoring' },
+  // NEW-LGL-2 — bank-ops self-serve SSO config (provider preset, client id,
+  // discovery URL, encrypted secret, auto-provision toggle, test connection).
+  { allowedRoles: ADMIN_ONLY_ROLES, description: 'Configure single sign-on (OIDC) provider, client credentials, and auto-provisioning. Includes a discovery-document validator.', group: 'admin-integrations', navVisible: true, obsoleteInV2: true, path: '/admin/integrations/sso', title: 'SSO Configuration' },
+  { allowedRoles: MONITORING_ROLES, description: 'Read-only health, readiness, and diagnostics visibility.', group: 'admin-integrations', navVisible: true, obsoleteInV2: true, path: '/admin/monitoring', title: 'Admin Monitoring' },
   { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'External provider health and synchronization.', group: 'admin-integrations', navVisible: true, obsoleteInV2: true, path: '/integrations', title: 'Integrations' },
   // F-12.4 / D-101 — widened from ADMIN_ROLES to HR_DIRECTOR_ADMIN_ROLES
   // so HR/Director keep their dictionary-admin access after the legacy
@@ -331,6 +368,8 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: ADMIN_ROLES, description: 'Configure BambooHR or Workday HRIS integration for automated employee sync.', group: 'admin-integrations', navVisible: true, obsoleteInV2: true, path: '/admin/hris', title: 'HRIS Integration' },
   { allowedRoles: ADMIN_ROLES, description: 'View and manage ABAC (Attribute-Based Access Control) policies per role and resource.', group: 'admin-governance', navVisible: true, obsoleteInV2: true, path: '/admin/access-policies', title: 'Access Policies' },
   { allowedRoles: ADMIN_ROLES, description: 'F-5.4 / D-159 — override the role list behind each named RBAC preset (EXEC_ROLES, HR_GOVERNANCE_ROLES, etc.). Flag-gated by adminRolePermissionUI (default OFF).', group: 'admin-governance', navVisible: false, path: '/admin/access-policies/edit', title: 'Role Permissions' },
+  { allowedRoles: ADMIN_ROLES, description: 'W4-11 — consolidated governance shell with three tabs: Roles (tenant-defined + built-in), Access Policies (ABAC registry), and Responsibility Matrix (who-approves-what). Replaces the standalone /admin/access-policies and /admin/responsibility-matrix routes when dsRefresh is on.', flag: 'dsRefresh', group: 'admin-governance', navVisible: false, path: '/admin/governance/roles', title: 'Governance' },
+  { allowedRoles: ADMIN_ROLES, description: 'MANUAL-CLICK-THROUGH-30 — admin matrix of 30 V2 journeys x 8 roles. QA fills the cells during staging soak; flips green only when every PASS-expected cell is observed PASS.', flag: 'dsRefresh', group: 'admin-governance', navVisible: false, path: '/admin/v2-soak-checklist', title: 'V2 Soak Checklist' },
   { allowedRoles: ADMIN_ROLES, description: 'Configure who approves each governed action (project activation, budget change, person release, etc.).', group: 'admin-governance', navVisible: true, obsoleteInV2: true, path: '/admin/responsibility-matrix', title: 'Responsibility Matrix' },
   { allowedRoles: ADMIN_ROLES, description: 'Manage bill-rate cards and per-(role × grade × skill) hourly rates used by the J2 resolver at assignment-book time.', group: 'admin-config', navVisible: true, obsoleteInV2: true, path: '/admin/rate-cards', title: 'Rate Cards' },
   { allowedRoles: ADMIN_ROLES, description: 'Configure per-leave-type accrual, max carry-over, and approval chains used by the leave-request workflow.', group: 'admin-config', navVisible: true, obsoleteInV2: true, path: '/admin/leave-policies', title: 'Leave Policies' },

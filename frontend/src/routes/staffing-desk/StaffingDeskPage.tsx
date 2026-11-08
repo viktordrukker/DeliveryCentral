@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { BulkReassignPanel } from '@/components/staffing-desk/BulkReassignPanel';
@@ -8,18 +8,20 @@ import { useTitleBarActions } from '@/app/title-bar-context';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
+import { PageHeader } from '@/components/common/PageHeader';
 import { TipTrigger } from '@/components/common/TipBalloon';
 import { StaffingDeskDetailDrawer } from '@/components/staffing-desk/StaffingDeskDetailDrawer';
+import { CreatePositionDrawer } from '@/components/staffing-requests/CreatePositionDrawer';
 import { StaffingRequestDrawer } from '@/components/staffing-requests/StaffingRequestDrawer';
 import { DemandDrillDown } from '@/components/staffing-desk/DemandDrillDown';
-import { WorkforcePlanner } from '@/components/staffing-desk/WorkforcePlanner';
 import { StaffingDeskExportButton } from '@/components/staffing-desk/StaffingDeskExportButton';
 import { SavedFiltersDropdown } from '@/components/staffing-desk/SavedFiltersDropdown';
 import { SupplyDrillDown } from '@/components/staffing-desk/SupplyDrillDown';
-import { PlannerScenarioPanel } from '@/components/staffing-desk/PlannerScenarioPanel';
 import { StaffingDeskKpiStrip } from '@/components/staffing-desk/StaffingDeskKpiStrip';
 import { StaffingDeskTable } from '@/components/staffing-desk/StaffingDeskTable';
+import { StaffingDeskTabStrip, type StaffingTab } from '@/components/staffing-desk/StaffingDeskTabStrip';
 import { StaffingDeskViewSwitcher } from '@/components/staffing-desk/StaffingDeskViewSwitcher';
+import { JqlQueryBar } from '@/components/staffing-desk/JqlQueryBar';
 import { WorkloadTimeline } from '@/components/staffing-desk/WorkloadTimeline';
 import { useStaffingDesk } from '@/features/staffing-desk/useStaffingDesk';
 import { useStaffingDeskActions } from '@/features/staffing-desk/useStaffingDeskActions';
@@ -32,6 +34,11 @@ const FILTER_DEFAULTS = {
   allocMin: '',
   colWidths: '',
   from: '',
+  // SoT PR 6 — `kind` is the Supply/Demand segmented toggle. Both segments are
+  // ProjectPosition rows; `kind` distinguishes filled-supply (assignment) from
+  // open-demand (request) for UI grouping only. The legacy `kind=request|assignment`
+  // entity discriminator has been retired by PR 1 in favour of "Position" as the
+  // canonical entity name.
   kind: '',
   orgUnitId: '',
   page: '1',
@@ -51,6 +58,9 @@ const FILTER_DEFAULTS = {
   sortBy: '',
   sortDir: '',
   status: '',
+  // SoT PR 6 — currently-active saved tab id. Persists tab selection through
+  // back/forward navigation (UX Law 5).
+  tab: 'mine',
   to: '',
   view: 'table',
 };
@@ -73,15 +83,54 @@ function serializeColWidths(widths: Record<string, number>): string {
     .join(',');
 }
 
+const LIFECYCLE_LEGEND: ReadonlyArray<{ key: string; label: string }> = [
+  { key: 'open',       label: 'Open' },
+  { key: 'proposed',   label: 'Proposed' },
+  { key: 'booked',     label: 'Booked' },
+  { key: 'onboarding', label: 'Onboarding' },
+  { key: 'assigned',   label: 'Assigned' },
+  { key: 'hold',       label: 'On hold' },
+  { key: 'released',   label: 'Released' },
+];
+
 export function StaffingDeskPage(): JSX.Element {
-  const [filters, setFilters, resetFilters] = useFilterParams(FILTER_DEFAULTS);
+  const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   const { setActions } = useTitleBarActions();
+
+  // W3-10 — The legacy `?view=board` (kanban) view was retired in Phase 2;
+  // a prior fix made it a render-alias for `view=table`. Now coerce the URL
+  // itself so back/forward navigation, bookmarks, and deep-links land on the
+  // canonical `?view=table` and the View switcher reflects the selected tab.
+  useEffect(() => {
+    if (filters.view === 'board') {
+      setFilters({ view: 'table' });
+    }
+  }, [filters.view, setFilters]);
   const [selectedRow, setSelectedRow] = useState<StaffingDeskRow | null>(null);
   const closeDrawer = useCallback(() => setSelectedRow(null), []);
   const [supplyOpen, setSupplyOpen] = useState(false);
   const [demandOpen, setDemandOpen] = useState(false);
   const [requestDrawerOpen, setRequestDrawerOpen] = useState(false);
+  // SoT PR 8 — embedded CreatePositionDrawer driven by `?openCreatePosition=true`.
+  // Same query-param contract as ProjectDetailPage so BenchInspector deep-links
+  // and other callers behave consistently.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const createPositionOpen = searchParams.get('openCreatePosition') === 'true';
+  const closeCreatePosition = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('openCreatePosition');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+  const openCreatePosition = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('openCreatePosition', 'true');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [timelinePopup, setTimelinePopup] = useState<{ personId: string; personName: string } | null>(null);
 
@@ -131,7 +180,10 @@ export function StaffingDeskPage(): JSX.Element {
 
   const deskActions = useStaffingDeskActions(state.refetch);
 
-  // Title bar: Saved Filters, Export, View switcher, Tip
+  // SoT PR 6 — saved-tab strip + JqlBar are the page chrome that replaces the
+  // legacy inline CTA cluster. The title-bar slot keeps the export/columns
+  // /view-switcher actions plus the page-level quick-action links
+  // (UX Law 9 — every dashboard exposes its companions).
   useEffect(() => {
     setActions(
       <>
@@ -147,6 +199,9 @@ export function StaffingDeskPage(): JSX.Element {
           }}
         />
         <StaffingDeskViewSwitcher value={filters.view} onChange={(v) => setFilters({ view: v })} />
+        <Button as={Link} variant="secondary" size="sm" to="/approvals">Approvals</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/people/bench">Bench</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/dashboard">Dashboard</Button>
         <TipTrigger />
       </>
     );
@@ -157,8 +212,87 @@ export function StaffingDeskPage(): JSX.Element {
     setTimelinePopup({ personId, personName });
   }, []);
 
+  // SoT PR 6 — dirty indicator: any filter that is not the empty default
+  // (excluding page/pageSize/tab/view/colWidths) counts as "unsaved moves"
+  // relative to the active saved tab.
+  const dirty = useMemo(() => {
+    return Object.entries(filters).some(([k, v]) => {
+      if (k === 'page' || k === 'pageSize' || k === 'tab' || k === 'view' || k === 'colWidths') return false;
+      if (k === 'positionIds') return false;
+      return v && v !== (FILTER_DEFAULTS as Record<string, string>)[k];
+    });
+  }, [filters]);
+
+  const onSelectTab = useCallback((tab: StaffingTab) => {
+    // Apply the tab's query to URL params, reset paging, switch off planner.
+    const reset: Record<string, string> = {};
+    for (const k of Object.keys(FILTER_DEFAULTS)) {
+      if (k === 'colWidths' || k === 'pageSize') continue;
+      reset[k] = '';
+    }
+    setFilters({ ...reset, ...tab.query, tab: tab.id, page: '1', view: 'table' });
+  }, [setFilters]);
+
+  const onOpenPlanner = useCallback(() => {
+    setFilters({ view: 'planner' });
+  }, [setFilters]);
+
+  const handleJqlApply = useCallback((nextFilters: Partial<Record<string, string>>) => {
+    // Reset all kind/person/project/etc keys touched by the parser; keep colWidths/tab/view.
+    const cleared: Record<string, string> = {};
+    for (const [k, v] of Object.entries(nextFilters)) cleared[k] = v ?? '';
+    setFilters({ ...cleared, page: '1' });
+  }, [setFilters]);
+
+  const totalPages = Math.max(1, Math.ceil(state.totalCount / state.pageSize));
+
   return (
     <PageContainer testId="staffing-desk-page">
+      {/* Section 1 — PageHeader with badges (open positions / bench / dirty). */}
+      <PageHeader
+        title="Staffing Desk"
+        breadcrumbs={[{ label: 'Workforce' }, { label: 'Staffing Desk' }]}
+        badges={
+          <>
+            <span className="badge badge-outline" data-testid="sd-badge-open">
+              {state.supplyDemand.headcountOpen} open
+            </span>
+            <span className="badge badge-outline" data-testid="sd-badge-bench">
+              {state.supplyDemand.benchCount} bench
+            </span>
+            {dirty && (
+              <span className="sd-tab__dirty" aria-live="polite" data-testid="sd-badge-dirty">
+                unsaved moves
+              </span>
+            )}
+          </>
+        }
+      />
+
+      {/* Section 2 — Saved tab strip (6 tabs Mine/Public + Distribution Studio + add). */}
+      <StaffingDeskTabStrip
+        activeTabId={filters.tab}
+        currentFilters={filters}
+        onSelectTab={onSelectTab}
+        dirty={dirty}
+        onOpenPlanner={onOpenPlanner}
+        plannerActive={filters.view === 'planner'}
+      />
+
+      {/* Section 3 — JqlBar (visible when planner not active). */}
+      {filters.view !== 'planner' && (
+        <div className="sd-jql-row">
+          <div className="sd-jql-row__jql">
+            <JqlQueryBar
+              filters={filters}
+              onApplyFilters={handleJqlApply}
+              visible
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Section 4 — KPI strip (6 tiles). */}
       <StaffingDeskKpiStrip
         kpis={state.kpis}
         supplyDemand={state.supplyDemand}
@@ -166,15 +300,61 @@ export function StaffingDeskPage(): JSX.Element {
         onDemandClick={() => setDemandOpen(true)}
       />
 
-      {/* Action buttons below KPIs.
+      {/* Section 5 — Supply/Demand segmented toggle (SoT PR 6).
+          Chrome (Columns/SavedFilters/Export) lives in the title-bar slot
+          and is not duplicated here. */}
+      {filters.view !== 'planner' && (
+        <div className="sd-bulk-bar">
+          <div className="sd-bulk-bar__supply-toggle" role="tablist" aria-label="Supply / Demand">
+            <Button
+              role="tab"
+              aria-selected={filters.kind !== 'request'}
+              variant={filters.kind !== 'request' ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => setFilters({ kind: 'assignment', page: '1' })}
+              type="button"
+              style={{ borderRadius: 0 }}
+            >
+              Supply
+            </Button>
+            <Button
+              role="tab"
+              aria-selected={filters.kind === 'request'}
+              variant={filters.kind === 'request' ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => setFilters({ kind: 'request', page: '1' })}
+              type="button"
+              style={{ borderRadius: 0 }}
+            >
+              Demand
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Action buttons below segmented toggle.
           Sprint F-0.10 (Decision-10) — single canonical staffing flow:
-          Create Staffing Request → Slate → Pick → Assignment lifecycle.
+          Create Position → Slate → Pick → Position lifecycle.
           The legacy "Make Assignment" direct-create CTA is removed in v1
           (route gated by `staffingMakeAssignment` flag, default OFF). */}
+      {/* W4-06 — button copy clarified per audit. The primary CTA explicitly
+          says "Quick" so users know which surface they're about to open; the
+          secondary CTA points to the full-page workflow for slate/pick details. */}
       <div style={{ display: 'flex', gap: 'var(--space-2)', padding: 'var(--space-2) 0' }}>
-        <Button variant="primary" size="sm" onClick={() => setRequestDrawerOpen(true)}>+ Create Staffing Request</Button>
-        <Button as={Link} variant="ghost" size="sm" to="/staffing-requests/new">Open full create page</Button>
+        {/* SoT PR 8 — embedded CreatePositionDrawer (V2-done criterion 6).
+            Replaces the legacy "(Full page)" link to /staffing-requests/new. */}
+        <Button variant="primary" size="sm" type="button" data-testid="create-position-open" onClick={openCreatePosition}>+ New Position</Button>
+        <Button variant="ghost" size="sm" type="button" onClick={() => setRequestDrawerOpen(true)}>+ New Position (Quick)</Button>
       </div>
+      <CreatePositionDrawer
+        open={createPositionOpen}
+        initialProjectId={filters.project || filters.projectId || undefined}
+        onClose={closeCreatePosition}
+        onCreated={() => {
+          closeCreatePosition();
+          state.refetch();
+        }}
+      />
       <StaffingRequestDrawer
         open={requestDrawerOpen}
         onClose={() => setRequestDrawerOpen(false)}
@@ -185,50 +365,53 @@ export function StaffingDeskPage(): JSX.Element {
       {state.isLoading && <LoadingState variant="skeleton" skeletonType="table" />}
       {state.error && <ErrorState description={state.error} />}
 
-      {!state.isLoading && !state.error && (filters.view === 'table' || filters.view === 'board' || !filters.view) && (
-        <StaffingDeskTable
-          items={state.items.filter((row) =>
-            !HIDDEN_STATUSES.has(row.status?.toUpperCase() ?? '')
-            && (positionIdsSet === null || positionIdsSet.has(row.id))
-          )}
-          onRowClick={setSelectedRow}
-          onPersonClick={handlePersonClick}
-          activeTab={filters.kind}
-          onTabChange={(tab) => setFilters({ kind: tab === 'supply' ? 'assignment' : 'request', page: '1' })}
-          columnsOpen={columnsOpen}
-          onColumnsClose={() => setColumnsOpen(false)}
-          columnWidths={columnWidths}
-          onColumnWidthChange={handleColumnWidthChange}
-          dsRefresh={dsRefreshEnabled}
-        />
-      )}
-
-      {dsRefreshEnabled && !state.isLoading && !state.error && (filters.view === 'table' || filters.view === 'board' || !filters.view) && (
-        <BulkReassignPanel
-          items={state.items.filter((row) => !HIDDEN_STATUSES.has(row.status?.toUpperCase() ?? ''))}
-          onApplied={() => state.refetch()}
-        />
-      )}
-
-      {filters.view === 'planner' && (
+      {/* Section 6 — Master DataTable with filter row + util column + lifecycle legend. */}
+      {!state.isLoading && !state.error && (filters.view === 'table' || !filters.view) && (
         <>
-          {/* The full swimlane planner is the flagship Planner surface in both
-              flag states. dsRefresh ON additionally surfaces the saved-scenario
-              panel + studio beneath it (additive — not a replacement, which
-              previously regressed the ON path to a scenario list only).
-              LEAN-P4a-2 adds the compact PlannerScenarioPanel sidebar with
-              Save / Load / Cancel for the new /api/staffing/scenarios CRUD. */}
-          <WorkforcePlanner poolId={filters.poolId} orgUnitId={filters.orgUnitId} />
-          {dsRefreshEnabled ? (
-            <>
-              <PlannerScenarioPanel />
-              <DistributionStudio canEdit />
-            </>
-          ) : null}
+          <StaffingDeskTable
+            items={state.items.filter((row) =>
+              !HIDDEN_STATUSES.has(row.status?.toUpperCase() ?? '')
+              && (positionIdsSet === null || positionIdsSet.has(row.id))
+            )}
+            onRowClick={setSelectedRow}
+            onPersonClick={handlePersonClick}
+            activeTab={filters.kind}
+            onTabChange={(tab) => setFilters({ kind: tab === 'supply' ? 'assignment' : 'request', page: '1' })}
+            columnsOpen={columnsOpen}
+            onColumnsClose={() => setColumnsOpen(false)}
+            columnWidths={columnWidths}
+            onColumnWidthChange={handleColumnWidthChange}
+            dsRefresh={dsRefreshEnabled}
+          />
+          {dsRefreshEnabled && (
+            <BulkReassignPanel
+              items={state.items.filter((row) => !HIDDEN_STATUSES.has(row.status?.toUpperCase() ?? ''))}
+              onApplied={() => state.refetch()}
+            />
+          )}
+          {/* Lifecycle legend — readable but unobtrusive (DS canvas L393-413). */}
+          <div className="sd-lifecycle-legend" aria-label="Position lifecycle legend">
+            <span className="sd-lifecycle-legend__label">Timeline legend</span>
+            {LIFECYCLE_LEGEND.map((l) => (
+              <span key={l.key} className="sd-lifecycle-legend__item">
+                <span className={`sd-lifecycle-legend__swatch sd-lifecycle-legend__swatch--${l.key}`} aria-hidden />
+                <span>{l.label}</span>
+              </span>
+            ))}
+          </div>
         </>
       )}
 
-      {/* Pagination — includes "X of Y records" */}
+      {filters.view === 'planner' && (
+        /* SoT PR 7 — single canonical Distribution Studio (DS canvas Planner
+           view): JqlBar → 240px BenchSidebar + PlannerGrid + AnomalyDrawer.
+           Scenario CRUD lives inside the planner toolbar (PlannerScenariosMenu);
+           the standalone PlannerScenarioPanel + scenarios-only DistributionStudio
+           were retired. */
+        <DistributionStudio poolId={filters.poolId} orgUnitId={filters.orgUnitId} />
+      )}
+
+      {/* Section 7 — Pagination footer. */}
       {!state.isLoading && !state.error && state.totalCount > 0 && (
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)',
@@ -240,8 +423,8 @@ export function StaffingDeskPage(): JSX.Element {
           </span>
           <div style={{ display: 'inline-flex', gap: 'var(--space-2)', alignItems: 'center', fontVariantNumeric: 'tabular-nums' }}>
             <Button variant="secondary" size="sm" disabled={state.page <= 1} onClick={() => setFilters({ page: String(state.page - 1) })} type="button">&larr;</Button>
-            <span style={{ minWidth: 80, textAlign: 'center' }}>Page {state.page} of {Math.max(1, Math.ceil(state.totalCount / state.pageSize))}</span>
-            <Button variant="secondary" size="sm" disabled={state.page >= Math.ceil(state.totalCount / state.pageSize)} onClick={() => setFilters({ page: String(state.page + 1) })} type="button">&rarr;</Button>
+            <span style={{ minWidth: 80, textAlign: 'center' }}>Page {state.page} of {totalPages}</span>
+            <Button variant="secondary" size="sm" disabled={state.page >= totalPages} onClick={() => setFilters({ page: String(state.page + 1) })} type="button">&rarr;</Button>
           </div>
           <span style={{ flex: '1 1 0', textAlign: 'right' }}>
             <select className="field__control" style={{ fontSize: 11, padding: '2px 6px', width: 'auto', display: 'inline', minWidth: 0 }} value={filters.pageSize} onChange={(e) => setFilters({ pageSize: e.target.value, page: '1' })}>

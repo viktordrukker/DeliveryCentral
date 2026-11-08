@@ -67,8 +67,8 @@ const SUPPLY_ALL_COLUMNS: ColDef[] = [
   { key: 'skills', label: 'Skills', category: 'Person', width: 120, filterType: 'multiselect', getValue: (r) => r.personSkills.join(','), render: (r) => <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{r.personSkills.slice(0, 3).join(', ')}{r.personSkills.length > 3 ? ` +${r.personSkills.length - 3}` : ''}</span> },
   { key: 'email', label: 'Email', category: 'Person', width: 130, filterType: 'text', getValue: (r) => r.personEmail, render: (r) => <span style={{ fontSize: 10 }}>{r.personEmail ?? ''}</span> },
   { key: 'empStatus', label: 'Emp.', category: 'Person', width: 70, filterType: 'multiselect', filterOptions: EMP_STATUS_OPTS, getValue: (r) => r.personEmploymentStatus, render: (r) => r.personEmploymentStatus ?? '' },
-  { key: 'code', label: 'Code', category: 'Assignment', width: 80, filterType: 'text', getValue: (r) => r.assignmentCode, render: (r) => r.assignmentCode ?? '' },
-  { key: 'createdAt', label: 'Created', category: 'Assignment', width: 75, filterType: 'date', getValue: (r) => r.createdAt.slice(0, 10), render: (r) => <span style={{ fontSize: 10 }}>{formatDateShort(r.createdAt)}</span> },
+  { key: 'code', label: 'Code', category: 'Position', width: 80, filterType: 'text', getValue: (r) => r.assignmentCode, render: (r) => r.assignmentCode ?? '' },
+  { key: 'createdAt', label: 'Created', category: 'Position', width: 75, filterType: 'date', getValue: (r) => r.createdAt.slice(0, 10), render: (r) => <span style={{ fontSize: 10 }}>{formatDateShort(r.createdAt)}</span> },
 ];
 
 const DEMAND_ALL_COLUMNS: ColDef[] = [
@@ -81,10 +81,10 @@ const DEMAND_ALL_COLUMNS: ColDef[] = [
   { key: 'startDate', label: 'Start', category: 'Core', width: 75, filterType: 'date', getValue: (r) => r.startDate.slice(0, 10), render: (r) => <span style={{ fontSize: 10 }}>{formatDateShort(r.startDate)}</span> },
   { key: 'endDate', label: 'End', category: 'Core', width: 75, filterType: 'date', getValue: (r) => r.endDate?.slice(0, 10) ?? null, render: (r) => r.endDate ? <span style={{ fontSize: 10 }}>{formatDateShort(r.endDate)}</span> : <span style={{ color: 'var(--color-text-subtle)', fontSize: 10 }}>Open</span> },
   { key: 'status', label: 'Status', category: 'Core', width: 80, filterType: 'multiselect', filterOptions: STATUS_OPTS, getValue: (r) => r.status, render: (r) => <StatusBadge label={humanizeEnum(r.status)} status={r.status} variant="dot" /> },
-  { key: 'skills', label: 'Skills', category: 'Request', width: 110, filterType: 'multiselect', getValue: (r) => r.skills.join(','), render: (r) => <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{r.skills.slice(0, 3).join(', ')}{r.skills.length > 3 ? ` +${r.skills.length - 3}` : ''}</span> },
-  { key: 'requestedBy', label: 'By', category: 'Request', width: 90, filterType: 'multiselect', getValue: (r) => r.requestedByName, render: (r) => r.requestedByName ?? '' },
-  { key: 'summary', label: 'Summary', category: 'Request', width: 150, filterType: 'text', getValue: (r) => r.summary, render: (r) => <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{r.summary ?? ''}</span> },
-  { key: 'createdAt', label: 'Created', category: 'Request', width: 110, filterType: 'date', getValue: (r) => r.createdAt.slice(0, 10), render: (r) => {
+  { key: 'skills', label: 'Skills', category: 'Position', width: 110, filterType: 'multiselect', getValue: (r) => r.skills.join(','), render: (r) => <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{r.skills.slice(0, 3).join(', ')}{r.skills.length > 3 ? ` +${r.skills.length - 3}` : ''}</span> },
+  { key: 'requestedBy', label: 'By', category: 'Position', width: 90, filterType: 'multiselect', getValue: (r) => r.requestedByName, render: (r) => r.requestedByName ?? '' },
+  { key: 'summary', label: 'Summary', category: 'Position', width: 150, filterType: 'text', getValue: (r) => r.summary, render: (r) => <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{r.summary ?? ''}</span> },
+  { key: 'createdAt', label: 'Created', category: 'Position', width: 110, filterType: 'date', getValue: (r) => r.createdAt.slice(0, 10), render: (r) => {
     const tone = getAgingTone(r.createdAt);
     const days = getAgingDays(r.createdAt);
     const status = tone === 'danger' ? 'danger' : tone === 'warning' ? 'warning' : 'neutral';

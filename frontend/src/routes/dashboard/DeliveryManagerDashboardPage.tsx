@@ -93,7 +93,7 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
       <>
         <PeriodSelector onAsOfChange={state.setAsOf} value={state.asOf} />
         <Button as={Link} variant="secondary" size="sm" to="/projects">Projects</Button>
-        <Button as={Link} variant="secondary" size="sm" to="/assignments">Assignments</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/staffing-desk?view=table">Positions</Button>
         <TipTrigger />
       </>
     );
@@ -171,7 +171,7 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
                 rows: (d.portfolioHealth).map((i) => ({ Project: i.name, Code: i.projectCode, Status: i.status, Staff: String(i.staffingCount), Flags: i.anomalyFlags.join(', ') })),
               }}>
                 {d.portfolioHealth.length === 0 ? (
-                  <EmptyState description="No active projects found for this period." title="No portfolio data" />
+                  <EmptyState description="No active projects found for this period." title="No portfolio data" action={{ href: '/projects', label: 'Open projects' }} />
                 ) : (
                   <Table
                     variant="compact"
@@ -197,13 +197,13 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
               </SectionCard>
 
               {(d.staffingGaps ?? []).length > 0 && (
-                <SectionCard id="unstaffed-projects" title="Staffing Gaps — Assignments Ending Soon" collapsible>
+                <SectionCard id="unstaffed-projects" title="Staffing Gaps — Positions Ending Soon" collapsible>
                   <StaffingGapsTable gaps={d.staffingGaps ?? []} />
                 </SectionCard>
               )}
 
               {(d.openRequestsByProject ?? []).length > 0 && (
-                <SectionCard title="Open Staffing Requests by Project" collapsible>
+                <SectionCard title="Open Positions by Project" collapsible>
                   <OpenRequestsByProjectTable rows={d.openRequestsByProject ?? []} />
                 </SectionCard>
               )}
@@ -241,7 +241,7 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
                 />
               </SectionCard>
             ) : (
-              <EmptyState description="No active projects found for this period." title="No scorecard data" />
+              <EmptyState description="No active projects found for this period." title="No scorecard data" action={{ href: '/projects', label: 'Open projects' }} />
             )
           )}
 
@@ -262,6 +262,16 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
 
           />
         </>
+      ) : null}
+
+      {/* W1-03 — fallback when load completes with no data so the page is
+          never a blank canvas (UX Law 2). */}
+      {!state.isLoading && !state.error && !d ? (
+        <EmptyState
+          title="No delivery data yet"
+          description="No portfolio data is available for this period. Try a different range, or jump to projects to start staffing."
+          action={{ href: '/projects', label: 'Open projects' }}
+        />
       ) : null}
     </PageContainer>
   );
@@ -320,7 +330,7 @@ function ProjectHealthScorecardTable({ asOf, healthScores, projects }: ProjectHe
           } },
           { key: 'staff', title: 'Staff', width: 60, render: (item) => {
             const h = healthScores.get(item.projectId);
-            return h ? <Link style={{ textDecoration: 'none' }} to={`/assignments?projectId=${item.projectId}&status=active`} onClick={(e) => e.stopPropagation()}>{scoreIndicator(h.staffingScore)}</Link> : '—';
+            return h ? <Link style={{ textDecoration: 'none' }} to={`/staffing-desk?projectId=${item.projectId}&status=active`} onClick={(e) => e.stopPropagation()}>{scoreIndicator(h.staffingScore)}</Link> : '—';
           } },
           { key: 'time', title: 'Time', width: 60, render: (item) => {
             const h = healthScores.get(item.projectId);
@@ -379,7 +389,7 @@ function StaffingGapsTable({ gaps }: { gaps: StaffingGapItem[] }): JSX.Element {
       variant="compact"
       columns={[
         { key: 'project', title: 'Project', getValue: (gap) => `${gap.projectCode} — ${gap.projectName}`, render: (gap) => <span style={{ fontWeight: 500 }}>{gap.projectCode} — {gap.projectName}</span> },
-        { key: 'person', title: 'Person', width: 90, getValue: (gap) => gap.personId, render: (gap) => <Link to={`/people/${gap.personId}`} style={{ fontSize: 11, color: 'var(--color-accent)' }}>{gap.personId.slice(0, 8)}...</Link> },
+        { key: 'person', title: 'Person', width: 140, getValue: (gap) => gap.personName, render: (gap) => <Link to={`/people/${gap.personId}`} style={{ fontSize: 11, color: 'var(--color-accent)' }}>{gap.personName}</Link> },
         { key: 'endDate', title: 'End Date', width: 90, getValue: (gap) => gap.endDate, render: (gap) => <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{gap.endDate}</span> },
         { key: 'daysLeft', title: 'Days Left', align: 'right', getValue: (gap) => gap.daysUntilEnd, render: (gap) => <span style={{ ...NUM, color: gap.daysUntilEnd <= 7 ? 'var(--color-status-danger)' : gap.daysUntilEnd <= 14 ? 'var(--color-status-warning)' : 'var(--color-status-active)', fontWeight: 600 }}>{gap.daysUntilEnd}d</span> },
       ] as Column<StaffingGapItem>[]}
@@ -466,7 +476,7 @@ function TeamConflictsTable({ rows }: { rows: TeamConflict[] }): JSX.Element {
                 <span key={p.positionId}>
                   {idx > 0 ? ', ' : ''}
                   <Link
-                    to={`/project-positions/${p.positionId}`}
+                    to={`/positions/${p.positionPublicId ?? p.positionId}`}
                     onClick={(e) => e.stopPropagation()}
                     style={{ color: 'var(--color-accent)' }}
                   >

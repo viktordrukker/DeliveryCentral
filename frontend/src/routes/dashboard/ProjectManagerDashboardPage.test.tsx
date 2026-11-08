@@ -189,7 +189,7 @@ describe('ProjectManagerDashboardPage', () => {
       items: [
         { kind: 'TIMESHEET', id: 'ts-1', publicId: null, title: 'Week 22', contextLabel: null, ageHours: 3, severity: 'MEDIUM', ctaUrl: '/timesheets/approval' },
         { kind: 'TIMESHEET', id: 'ts-2', publicId: null, title: 'Week 22', contextLabel: null, ageHours: 5, severity: 'LOW', ctaUrl: '/timesheets/approval' },
-        { kind: 'STAFFING_REQUEST', id: 'sr-1', publicId: null, title: 'PRJ', contextLabel: null, ageHours: 1, severity: 'LOW', ctaUrl: '/staffing-requests' },
+        { kind: 'STAFFING_REQUEST', id: 'sr-1', publicId: null, title: 'PRJ', contextLabel: null, ageHours: 1, severity: 'LOW', ctaUrl: '/staffing-desk' },
       ],
       totalCount: 3,
     });

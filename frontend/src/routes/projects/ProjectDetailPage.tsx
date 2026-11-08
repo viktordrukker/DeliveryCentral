@@ -30,6 +30,9 @@ import { LifecycleTab } from './tabs/LifecycleTab';
 import { PulseTab } from './tabs/PulseTab';
 import { PlanTab } from './tabs/PlanTab';
 import { MoneyTab } from './tabs/MoneyTab';
+import { ProjectCasesTab } from './tabs/ProjectCasesTab';
+import { ManagePositionsDrawer } from '@/components/projects/ManagePositionsDrawer';
+import { CreatePositionDrawer } from '@/components/staffing-requests/CreatePositionDrawer';
 
 const BASE_TABS = [
   { id: 'radiator', label: 'Radiator' },
@@ -39,15 +42,19 @@ const BASE_TABS = [
   { id: 'team', label: 'Team & Vendors' },
   { id: 'budget', label: 'Budget' },
   { id: 'lifecycle', label: 'Lifecycle' },
+  // W2-02 — project-scoped Cases tab lists cases where relatedProjectId === id.
+  { id: 'cases', label: 'Cases' },
 ];
 
 // V2-A.1 — 3-tab canvas grammar (Pulse / Plan / Money). The Plan tab stacks
 // milestones + risks + change requests + team as sequential sections; the
 // Money tab keeps the BudgetTab content (already canvas-faithful internally).
+// W2-02 — Cases is added as a 4th canvas tab alongside Pulse/Plan/Money.
 const V2_TABS = [
   { id: 'pulse', label: 'Pulse' },
   { id: 'plan', label: 'Plan' },
   { id: 'money', label: 'Money' },
+  { id: 'cases', label: 'Cases' },
 ];
 
 const LEGACY_TAB_REDIRECTS: Record<string, string> = {
@@ -97,6 +104,27 @@ export function ProjectDetailPage(): JSX.Element {
   // V2-B.7 — header-driven add signals for the Plan sub-tabs (open their create forms).
   const [milestoneAddSignal, setMilestoneAddSignal] = useState(0);
   const [crAddSignal, setCrAddSignal] = useState(0);
+  // W4-05 — Manage-positions opens an inline Drawer instead of routing to
+  // the standalone positions list (UX Law 3 — no context loss).
+  const [managePositionsOpen, setManagePositionsOpen] = useState(false);
+  // SoT PR 8 — Create-position opens an embedded drawer (V2-done criterion 6).
+  // Driven by `?openCreatePosition=true` so deep-links from /staffing-desk,
+  // BenchInspector, and the legacy /staffing-requests/new redirect all land here.
+  const createPositionOpen = searchParams.get('openCreatePosition') === 'true';
+  function closeCreatePosition(): void {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('openCreatePosition');
+      return next;
+    });
+  }
+  function openCreatePosition(): void {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('openCreatePosition', 'true');
+      return next;
+    });
+  }
 
   // Sprint F-0.6 (B-06 / D-54) — KPI-strip RAG and Project Pulse / Radiator
   // overall band were computed from different signals and could disagree on
@@ -237,19 +265,21 @@ export function ProjectDetailPage(): JSX.Element {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {/* V2-B.7 — tab-scoped header actions (dsRefresh, Plan tab only).
                 Add-milestone / Add-change-request open the matching sub-tab's
-                create form via a signal; Manage-positions links to the existing
-                positions list (no per-position create route exists). */}
+                create form via a signal; W4-05 Manage-positions opens an
+                inline Drawer hosting the positions list (the standalone
+                /projects/:id/positions route remains for deep links). */}
             {dsRefreshEnabled && activeTab === 'plan' ? (
               <>
                 <Button variant="secondary" size="sm" type="button" onClick={() => setMilestoneAddSignal((n) => n + 1)}>Add milestone</Button>
                 <Button variant="secondary" size="sm" type="button" onClick={() => setCrAddSignal((n) => n + 1)}>Add change request</Button>
-                <Button as={Link} variant="secondary" size="sm" to={`/projects/${id}/positions`}>Manage positions</Button>
+                <Button variant="secondary" size="sm" type="button" data-testid="manage-positions-open" onClick={() => setManagePositionsOpen(true)}>Manage positions</Button>
               </>
             ) : null}
-            {/* Sprint F-0.10 (Decision-10) — single canonical staffing flow.
-                "Quick assign" direct-create CTA removed; all staffing goes
-                through Create Staffing Request → Slate → Pick. */}
-            <Button as={Link} variant="primary" size="sm" to={`/staffing-requests/new?projectId=${id}`}>Create Staffing Request</Button>
+            {/* SoT PR 8 — Create-position opens the embedded drawer (no
+                full-page form). UX Law 3 — no context loss.
+                Sprint F-0.10 (Decision-10) — single canonical staffing flow;
+                all staffing goes through Create Position → Slate → Pick. */}
+            <Button variant="primary" size="sm" type="button" data-testid="create-position-open" onClick={openCreatePosition}>Create Position</Button>
           </div>
         ) : null
       }
@@ -278,7 +308,9 @@ export function ProjectDetailPage(): JSX.Element {
               changeRequestAddSignal={crAddSignal}
             />
           ) : null}
-          {dsRefreshEnabled && activeTab === 'money' ? <MoneyTab projectId={id!} /> : null}
+          {dsRefreshEnabled && activeTab === 'money' ? <MoneyTab projectId={id!} project={state.data ?? null} /> : null}
+          {/* W2-02 — Cases tab renders in both v2 and legacy grammars. */}
+          {activeTab === 'cases' ? <ProjectCasesTab projectId={id!} /> : null}
 
           {/* Legacy 7-tab grammar when dsRefresh is off */}
           {!dsRefreshEnabled && activeTab === 'radiator' ? <RadiatorTab project={project} projectId={id!} reload={state.reload} /> : null}
@@ -299,6 +331,29 @@ export function ProjectDetailPage(): JSX.Element {
           <div className="print-footer print-only">
             {project.projectCode} {'·'} Printed {new Date().toLocaleDateString()}
           </div>
+
+          {/* W4-05 — inline Manage Positions drawer. */}
+          {id ? (
+            <ManagePositionsDrawer
+              open={managePositionsOpen}
+              projectId={id}
+              onClose={() => setManagePositionsOpen(false)}
+            />
+          ) : null}
+
+          {/* SoT PR 8 — embedded Create Position drawer (replaces full-page
+              /staffing-requests/new). */}
+          {id ? (
+            <CreatePositionDrawer
+              open={createPositionOpen}
+              initialProjectId={id}
+              onClose={closeCreatePosition}
+              onCreated={() => {
+                closeCreatePosition();
+                state.reload();
+              }}
+            />
+          ) : null}
         </>
       ) : null}
     </DetailLayout>

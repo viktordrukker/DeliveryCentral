@@ -29,6 +29,7 @@ export interface PositionFillSnapshot {
 }
 
 interface ProjectPositionProps {
+  publicId?: string;
   projectId: string;
   role: string;
   requiredAllocationPercent: number;
@@ -76,6 +77,15 @@ export class ProjectPosition extends AggregateRoot<ProjectPositionProps> {
     return PositionId.from(this.id);
   }
 
+  /**
+   * W1-11 — opaque tenant-scoped identifier emitted on response DTOs and in
+   * URLs. Falls back to `undefined` for entities that pre-date the foundation
+   * backfill; callers should treat absence as "use raw id".
+   */
+  public get publicId(): string | undefined {
+    return this.props.publicId;
+  }
+
   public get projectId(): string {
     return this.props.projectId;
   }
@@ -94,6 +104,22 @@ export class ProjectPosition extends AggregateRoot<ProjectPositionProps> {
 
   public get activeAllocationPercent(): number | undefined {
     return this.props.activeAllocationPercent;
+  }
+
+  public get activeValidFrom(): Date | undefined {
+    return this.props.activeValidFrom;
+  }
+
+  public get activeValidTo(): Date | undefined {
+    return this.props.activeValidTo;
+  }
+
+  public get startDate(): Date {
+    return this.props.startDate;
+  }
+
+  public get endDate(): Date {
+    return this.props.endDate;
   }
 
   public get releaseReason(): string | undefined {

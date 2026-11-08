@@ -3,7 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
+import { fetchCases } from '@/lib/api/cases';
 import { fetchHrManagerDashboard } from '@/lib/api/dashboard-hr-manager';
+import { fetchHeadcountTrend } from '@/lib/api/headcount-trend';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import { fetchMoodHeatmap } from '@/lib/api/pulse';
 import { fetchResourcePools } from '@/lib/api/resource-pools';
@@ -39,13 +41,19 @@ vi.mock('@/lib/api/resource-pools', () => ({
 }));
 
 vi.mock('@/lib/api/cases', () => ({
-  fetchCases: vi.fn().mockResolvedValue({ items: [] }),
+  fetchCases: vi.fn(),
+}));
+
+vi.mock('@/lib/api/headcount-trend', () => ({
+  fetchHeadcountTrend: vi.fn(),
 }));
 
 const mockedFetchHrManagerDashboard = vi.mocked(fetchHrManagerDashboard);
 const mockedFetchPersonDirectory = vi.mocked(fetchPersonDirectory);
 const mockedFetchMoodHeatmap = vi.mocked(fetchMoodHeatmap);
 const mockedFetchResourcePools = vi.mocked(fetchResourcePools);
+const mockedFetchHeadcountTrend = vi.mocked(fetchHeadcountTrend);
+const mockedFetchCases = vi.mocked(fetchCases);
 
 describe('HrDashboardPage', () => {
   beforeEach(() => {
@@ -53,6 +61,17 @@ describe('HrDashboardPage', () => {
     mockedFetchPersonDirectory.mockReset();
     mockedFetchMoodHeatmap.mockReset();
     mockedFetchResourcePools.mockReset();
+    mockedFetchHeadcountTrend.mockReset();
+    mockedFetchCases.mockReset();
+    mockedFetchCases.mockResolvedValue({ items: [] });
+    mockedFetchHeadcountTrend.mockResolvedValue([
+      { month: '2025-10', count: 7 },
+      { month: '2025-11', count: 8 },
+      { month: '2025-12', count: 8 },
+      { month: '2026-01', count: 8 },
+      { month: '2026-02', count: 9 },
+      { month: '2026-03', count: 9 },
+    ]);
 
     mockedFetchMoodHeatmap.mockResolvedValue({
       people: [
@@ -175,6 +194,54 @@ describe('HrDashboardPage', () => {
     // Wellbeing tab: mood heatmap
     await user.click(screen.getByRole('tab', { name: 'Wellbeing' }));
     expect(await screen.findByTestId('mood-heatmap')).toBeInTheDocument();
+  });
+
+  it('falls back to EmptyState when the headcount trend endpoint fails', async () => {
+    mockedFetchHeadcountTrend.mockReset();
+    mockedFetchHeadcountTrend.mockRejectedValueOnce(new Error('boom'));
+
+    mockedFetchPersonDirectory.mockResolvedValue({
+      items: [
+        {
+          currentAssignmentCount: 0,
+          currentLineManager: null,
+          currentOrgUnit: null,
+          displayName: 'Harper Ali',
+          dottedLineManagers: [],
+          grade: null,
+          id: '11111111-1111-1111-1111-111111111005',
+          primaryEmail: 'harper@example.com',
+          lifecycleStatus: 'ACTIVE',
+          resourcePoolIds: [],
+          resourcePools: [],
+          role: null, hiredAt: null, terminatedAt: null,
+        },
+      ],
+      page: 1,
+      pageSize: 100,
+      total: 1,
+    });
+
+    mockedFetchHrManagerDashboard.mockResolvedValue({
+      asOf: '2025-03-15T00:00:00.000Z',
+      dataSources: ['people'],
+      employeesWithoutManager: [],
+      employeesWithoutOrgUnit: [],
+      gradeDistribution: [],
+      headcountSummary: { activeHeadcount: 1, inactiveHeadcount: 0, totalHeadcount: 1 },
+      orgDistribution: [],
+      person: { displayName: 'Harper Ali', id: '11111111-1111-1111-1111-111111111005', primaryEmail: 'harper@example.com' },
+      recentDeactivationActivity: [],
+      recentJoinerActivity: [],
+      roleDistribution: [],
+      atRiskEmployees: [],
+    });
+
+    renderWithRouter();
+
+    expect(
+      await screen.findByText(/Headcount trend unavailable/i),
+    ).toBeInTheDocument();
   });
 });
 

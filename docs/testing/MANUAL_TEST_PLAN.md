@@ -1,8 +1,9 @@
 # DeliveryCentral — Manual Test Plan
 
-**Version:** 1.0
+**Version:** 1.1
 **Created:** 2026-04-11
-**Seed profile:** `phase2`
+**Updated:** 2026-06-09 (seed profile + accounts switched to `it-company` default)
+**Seed profile:** `it-company`
 **Target environment:** Docker local (`http://localhost:5173`)
 
 ---
@@ -11,7 +12,7 @@
 
 ```bash
 # Reset and seed fresh data
-docker compose exec -e SEED_PROFILE=phase2 backend sh -c "npx ts-node --transpile-only --project tsconfig.json prisma/seed.ts"
+docker compose exec -e SEED_PROFILE=it-company backend sh -c "npx ts-node --transpile-only --project tsconfig.json prisma/seed.ts"
 docker compose restart backend
 ```
 
@@ -20,13 +21,13 @@ docker compose restart backend
 | ID | Role | Email | Password |
 |----|------|-------|----------|
 | ADM | admin | admin@deliverycentral.local | DeliveryCentral@Admin1 |
-| DIR | director | noah.bennett@example.com | DirectorPass1! |
-| HR | hr_manager | diana.walsh@example.com | HrManagerPass1! |
-| RM | resource_manager | sophia.kim@example.com | ResourceMgrPass1! |
-| PM | project_manager | lucas.reed@example.com | ProjectMgrPass1! |
-| DM | delivery_manager | carlos.vega@example.com | DeliveryMgrPass1! |
-| EMP | employee | ethan.brooks@example.com | EmployeePass1! |
-| DUAL | rm + hr | emma.garcia@example.com | DualRolePass1! |
+| DIR | director | noah.bennett@itco.local | DirectorPass1! |
+| HR | hr_manager | diana.walsh@itco.local | HrManagerPass1! |
+| RM | resource_manager | sophia.kim@itco.local | ResourceMgrPass1! |
+| PM | project_manager | lucas.reed@itco.local | ProjectMgrPass1! |
+| DM | delivery_manager | carlos.vega@itco.local | DeliveryMgrPass1! |
+| EMP | employee | ethan.brooks@itco.local | EmployeePass1! |
+| DUAL | rm + hr | emma.garcia@itco.local | DualRolePass1! |
 
 ---
 
@@ -390,7 +391,7 @@ docker compose restart backend
 | DQ-02 | No SCREAMING_CASE enums | Check status badges, dropdown labels | All enums humanized (e.g., "Active" not "ACTIVE") | P1 |
 | DQ-03 | Dates are formatted | Check all date displays | Consistent format (e.g., "Apr 8, 2026") not ISO strings | P1 |
 | DQ-04 | KPI values match data | Compare dashboard KPIs to list page counts | Numbers should match (e.g., Active Projects KPI = project list count) | P0 |
-| DQ-05 | Seed data integrity | Check people count in directory | 32 people from phase2 seed | P0 |
+| DQ-05 | Seed data integrity | Check people count in directory | 200 people from it-company seed | P0 |
 | DQ-06 | Assignment counts match | Check main dashboard assignment KPI vs `/assignments` list | Numbers should match | P1 |
 | DQ-07 | Timesheet data present | Navigate to `/timesheets` as Ethan Brooks | Seed timesheet entries visible for recent weeks | P0 |
 | DQ-08 | Pulse data present | Navigate to Employee Dashboard as Ethan Brooks | Pulse history shows 12 weeks of mood data | P0 |

@@ -34,6 +34,8 @@ export interface CasesResponse {
 export interface CasesQuery {
   caseTypeKey?: string;
   ownerPersonId?: string;
+  // W2-02 — project-scoped Cases tab on Project Detail filters by relatedProjectId.
+  projectId?: string;
   subjectPersonId?: string;
 }
 
@@ -56,6 +58,13 @@ export interface CreateCaseRequest {
   summary?: string;
 }
 
+export async function fetchMyCases(): Promise<CasesResponse> {
+  // W2-01 — caller-scoped HR cases. The backend `/api/me/cases` endpoint
+  // filters to cases where the caller is the subject or a participant, so
+  // employees can see HR cases about them without holding HR roles.
+  return httpGet<CasesResponse>('/me/cases');
+}
+
 export async function fetchCases(query: CasesQuery = {}): Promise<CasesResponse> {
   const params = new URLSearchParams();
 
@@ -71,8 +80,17 @@ export async function fetchCases(query: CasesQuery = {}): Promise<CasesResponse>
     params.set('subjectPersonId', query.subjectPersonId);
   }
 
+  if (query.projectId) {
+    params.set('projectId', query.projectId);
+  }
+
   const suffix = params.toString();
   return httpGet<CasesResponse>(`/cases${suffix ? `?${suffix}` : ''}`);
+}
+
+// W2-02 — convenience helper used by the project-scoped Cases tab.
+export async function fetchProjectCases(projectId: string): Promise<CasesResponse> {
+  return fetchCases({ projectId });
 }
 
 export async function fetchCaseById(id: string): Promise<CaseRecord> {

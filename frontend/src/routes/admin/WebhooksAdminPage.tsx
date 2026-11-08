@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 
+import { AdminTabbedShell } from '@/components/admin/AdminTabbedShell';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
-import { PageContainer } from '@/components/common/PageContainer';
-import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import {
   WebhookSubscription,
@@ -37,6 +36,8 @@ export function WebhooksAdminPage(): JSX.Element {
   const [saving, setSaving] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deliveries, setDeliveries] = useState<WebhookDeliveryAttempt[]>([]);
+  const [deliveriesError, setDeliveriesError] = useState<string | null>(null);
+  const [deliveriesLoaded, setDeliveriesLoaded] = useState(false);
   const [testResult, setTestResult] = useState<WebhookDeliveryAttempt | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -69,7 +70,12 @@ export function WebhooksAdminPage(): JSX.Element {
     try {
       await deleteWebhook(id);
       setSubscriptions((prev) => prev.filter((s) => s.id !== id));
-      if (selectedId === id) setSelectedId(null);
+      if (selectedId === id) {
+        setSelectedId(null);
+        setDeliveries([]);
+        setDeliveriesError(null);
+        setDeliveriesLoaded(false);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete webhook.');
     }
@@ -87,11 +93,16 @@ export function WebhooksAdminPage(): JSX.Element {
   async function handleViewDeliveries(id: string): Promise<void> {
     setSelectedId(id);
     setTestResult(null);
+    setDeliveriesError(null);
+    setDeliveriesLoaded(false);
+    setDeliveries([]);
     try {
       const log = await fetchWebhookDeliveries(id);
       setDeliveries(log);
-    } catch {
-      setDeliveries([]);
+      setDeliveriesLoaded(true);
+    } catch (e) {
+      setDeliveriesError(e instanceof Error ? e.message : 'Failed to load delivery log.');
+      setDeliveriesLoaded(true);
     }
   }
 
@@ -105,13 +116,12 @@ export function WebhooksAdminPage(): JSX.Element {
   }
 
   return (
-    <PageContainer viewport>
-      <PageHeader
-        eyebrow="Admin"
-        subtitle="Manage outbound webhook subscriptions. Events are signed with HMAC-SHA256 in the X-Delivery-Signature header."
-        title="Webhook Subscriptions"
-      />
-
+    <AdminTabbedShell
+      eyebrow="Admin"
+      subtitle="Manage outbound webhook subscriptions. Events are signed with HMAC-SHA256 in the X-Delivery-Signature header."
+      testId="webhooks-admin-page"
+      title="Webhook Subscriptions"
+    >
       {error ? <ErrorState description={error} /> : null}
 
       <div style={{ background: 'var(--color-surface-alt)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '1rem', marginBottom: '1.5rem' }}>
@@ -198,23 +208,39 @@ export function WebhooksAdminPage(): JSX.Element {
         </div>
       ) : null}
 
-      {selectedId && deliveries.length > 0 ? (
-        <div style={{ marginTop: '1rem' }}>
+      {selectedId && deliveriesLoaded ? (
+        <div data-testid="delivery-log" style={{ marginTop: '1rem' }}>
           <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>Last 10 Delivery Attempts</h4>
-          <Table
-            variant="compact"
-            columns={[
-              { key: 'event', title: 'Event', getValue: (d) => d.eventType, render: (d) => d.eventType },
-              { key: 'status', title: 'Status', getValue: (d) => d.success ? 1 : 0, render: (d) => (
-                <span style={{ color: d.success ? 'var(--color-status-active)' : 'var(--color-status-danger)' }}>
-                  {d.success ? `OK ${d.statusCode ?? ''}` : `Failed ${d.statusCode ?? ''} ${d.error ?? ''}`}
-                </span>
-              ) },
-              { key: 'time', title: 'Time', getValue: (d) => d.attemptedAt, render: (d) => d.attemptedAt.slice(0, 19).replace('T', ' ') },
-            ] as Column<WebhookDeliveryAttempt>[]}
-            rows={deliveries}
-            getRowKey={(_, i) => String(i)}
-          />
+          {deliveriesError ? (
+            <ErrorState
+              description={deliveriesError}
+              onRetry={() => void handleViewDeliveries(selectedId)}
+              variant="card"
+            />
+          ) : deliveries.length === 0 ? (
+            <SectionCard>
+              <EmptyState
+                actions={[{ label: 'Send test delivery', onClick: () => void handleTest(selectedId), variant: 'primary' }]}
+                description="This subscription has not received any events yet. Send a test delivery to verify the endpoint is reachable."
+                title="No deliveries yet"
+              />
+            </SectionCard>
+          ) : (
+            <Table
+              variant="compact"
+              columns={[
+                { key: 'event', title: 'Event', getValue: (d) => d.eventType, render: (d) => d.eventType },
+                { key: 'status', title: 'Status', getValue: (d) => d.success ? 1 : 0, render: (d) => (
+                  <span style={{ color: d.success ? 'var(--color-status-active)' : 'var(--color-status-danger)' }}>
+                    {d.success ? `OK ${d.statusCode ?? ''}` : `Failed ${d.statusCode ?? ''} ${d.error ?? ''}`}
+                  </span>
+                ) },
+                { key: 'time', title: 'Time', getValue: (d) => d.attemptedAt, render: (d) => d.attemptedAt.slice(0, 19).replace('T', ' ') },
+              ] as Column<WebhookDeliveryAttempt>[]}
+              rows={deliveries}
+              getRowKey={(_, i) => String(i)}
+            />
+          )}
         </div>
       ) : null}
       <ConfirmDialog
@@ -224,6 +250,6 @@ export function WebhooksAdminPage(): JSX.Element {
         onConfirm={() => { const id = confirmDeleteId; setConfirmDeleteId(null); if (id) void handleDelete(id); }}
         title="Delete webhook?"
       />
-    </PageContainer>
+    </AdminTabbedShell>
   );
 }

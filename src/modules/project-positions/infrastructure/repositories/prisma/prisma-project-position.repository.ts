@@ -66,8 +66,15 @@ export class PrismaProjectPositionRepository implements ProjectPositionRepositor
     await gateway.delete({ where: { id } });
   }
 
-  public async findById(id: string): Promise<ProjectPosition | null> {
-    const row = await this.gateway.findFirst({ where: { id } });
+  public async findById(idOrPublicId: string): Promise<ProjectPosition | null> {
+    // W1-11 — transitional ingress accepting either the legacy uuid or the
+    // `pos_…` publicId. Detection is by prefix so we don't pay the cost of a
+    // failed UUID lookup before retrying. Drops once frontend stops emitting
+    // raw UUIDs (Wave 2 strict-publicId flip).
+    const where = /^pos_[A-Za-z0-9]{10,}$/.test(idOrPublicId)
+      ? { publicId: idOrPublicId }
+      : { id: idOrPublicId };
+    const row = await this.gateway.findFirst({ where });
     return row ? ProjectPositionPrismaMapper.toDomain(row) : null;
   }
 

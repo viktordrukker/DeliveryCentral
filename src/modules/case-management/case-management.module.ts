@@ -22,10 +22,11 @@ import { InMemoryCaseSlaService } from './infrastructure/services/in-memory-case
 import { PrismaCaseRecordRepository } from './infrastructure/repositories/prisma/prisma-case-record.repository';
 import { PrismaCaseCommentService } from './infrastructure/services/prisma-case-comment.service';
 import { CasesController } from './presentation/cases.controller';
+import { MeCasesController } from './presentation/me-cases.controller';
 
 @Module({
   imports: [NotificationsModule],
-  controllers: [CasesController],
+  controllers: [CasesController, MeCasesController],
   exports: [
     ApproveCaseService,
     ArchiveCaseService,

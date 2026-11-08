@@ -43,16 +43,20 @@ export class DemandProfileService {
   public constructor(private readonly prisma: PrismaService) {}
 
   public async getProfile(params: { projectId?: string }): Promise<DemandProfileResponseDto> {
-    const where: Record<string, unknown> = { status: { in: ['OPEN', 'IN_REVIEW'] } };
+    // SoT PR 14b — canonical read from ProjectPosition.
+    // Legacy `staffingRequest.status IN (OPEN, IN_REVIEW)` => ProjectPosition.fillStatus IN (OPEN, PROPOSED).
+    // Canonical model is one position per headcount (1 row = 1 headcount), so
+    // headcountRequired/headcountFulfilled are derived per-position (1/0 or 1/1 if filled).
+    const where: Record<string, unknown> = { fillStatus: { in: ['OPEN', 'PROPOSED'] } };
     if (params.projectId) where.projectId = params.projectId;
 
-    const openRequests = await this.prisma.staffingRequest.findMany({
+    const openPositions = await this.prisma.projectPosition.findMany({
       where,
       orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
     });
 
     // Resolve project names
-    const projectIds = [...new Set(openRequests.map((r) => r.projectId))];
+    const projectIds = [...new Set(openPositions.map((p) => p.projectId))];
     const projects = await this.prisma.project.findMany({
       where: { id: { in: projectIds } },
       select: { id: true, name: true },
@@ -69,9 +73,12 @@ export class DemandProfileService {
 
     const requestDtos: DemandRequestDto[] = [];
 
-    for (const r of openRequests) {
-      const openHc = r.headcountRequired - r.headcountFulfilled;
-      totalHcNeeded += r.headcountRequired;
+    for (const r of openPositions) {
+      // Each ProjectPosition row = 1 headcount; OPEN/PROPOSED = unfilled = openHc:1.
+      const headcountRequired = 1;
+      const headcountFulfilled = 0;
+      const openHc = headcountRequired - headcountFulfilled;
+      totalHcNeeded += headcountRequired;
       hcOpen += openHc;
 
       const prio = r.priority ?? 'MEDIUM';
@@ -86,11 +93,11 @@ export class DemandProfileService {
         requestId: r.id,
         projectName: projectNameMap.get(r.projectId) ?? r.projectId,
         role: r.role,
-        allocationPercent: decimalToNumber(r.allocationPercent),
+        allocationPercent: decimalToNumber(r.requiredAllocationPercent),
         priority: prio,
         skills: r.skills,
-        headcountRequired: r.headcountRequired,
-        headcountFulfilled: r.headcountFulfilled,
+        headcountRequired,
+        headcountFulfilled,
         startDate: r.startDate.toISOString(),
         endDate: r.endDate.toISOString(),
         daysOpen: Math.max(0, Math.round((now - r.createdAt.getTime()) / 86400000)),
@@ -111,15 +118,19 @@ export class DemandProfileService {
         select: { personId: true, skillId: true },
       });
 
-      // Get active allocations
+      // SoT PR 14b — canonical read of active allocations.
       const personIds = [...new Set(personSkills.map((ps) => ps.personId))];
-      const assignments = await this.prisma.projectAssignment.findMany({
-        where: { personId: { in: personIds }, status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
-        select: { personId: true, allocationPercent: true },
+      const positions = await this.prisma.projectPosition.findMany({
+        where: { activePersonId: { in: personIds }, fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
+        select: { activePersonId: true, activeAllocationPercent: true },
       });
       const allocByPerson = new Map<string, number>();
-      for (const a of assignments) {
-        allocByPerson.set(a.personId, (allocByPerson.get(a.personId) ?? 0) + (a.allocationPercent?.toNumber() ?? 0));
+      for (const a of positions) {
+        if (!a.activePersonId) continue;
+        allocByPerson.set(
+          a.activePersonId,
+          (allocByPerson.get(a.activePersonId) ?? 0) + (a.activeAllocationPercent?.toNumber() ?? 0),
+        );
       }
 
       // Count people available per skill
@@ -146,7 +157,7 @@ export class DemandProfileService {
       .map((p) => ({ priority: p, headcount: priorityMap.get(p)! }));
 
     return {
-      totalRequests: openRequests.length,
+      totalRequests: openPositions.length,
       totalHeadcountNeeded: totalHcNeeded,
       headcountOpen: hcOpen,
       skillDemand,

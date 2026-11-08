@@ -77,8 +77,8 @@ const ASSIGNMENT_COLUMNS: ColDef[] = [
   { key: 'manager', label: 'Manager', category: 'Person', width: 100, filterType: 'multiselect', getValue: (r) => r.personManager, render: (r) => r.personManager ?? '' },
   { key: 'pool', label: 'Pool', category: 'Person', width: 90, filterType: 'multiselect', getValue: (r) => r.personPool, render: (r) => r.personPool ?? '' },
   { key: 'empStatus', label: 'Emp.', category: 'Person', width: 70, filterType: 'multiselect', filterOptions: EMP_STATUS_OPTS, getValue: (r) => r.personEmploymentStatus, render: (r) => r.personEmploymentStatus ?? '' },
-  { key: 'code', label: 'Code', category: 'Assignment', width: 80, filterType: 'text', getValue: (r) => r.assignmentCode, render: (r) => r.assignmentCode ?? '' },
-  { key: 'createdAt', label: 'Created', category: 'Assignment', width: 78, filterType: 'date', getValue: (r) => r.createdAt.slice(0, 10), render: (r) => <span style={{ fontSize: 10 }}>{formatDateShort(r.createdAt)}</span> },
+  { key: 'code', label: 'Code', category: 'Position', width: 80, filterType: 'text', getValue: (r) => r.assignmentCode, render: (r) => r.assignmentCode ?? '' },
+  { key: 'createdAt', label: 'Created', category: 'Position', width: 78, filterType: 'date', getValue: (r) => r.createdAt.slice(0, 10), render: (r) => <span style={{ fontSize: 10 }}>{formatDateShort(r.createdAt)}</span> },
 ];
 
 /* ── Position columns ── */

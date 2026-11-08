@@ -26,7 +26,14 @@ export class InMemoryPersonDirectoryQueryRepository
       pageSize: demoPeople.length,
     });
 
-    return list.items.find((item) => item.id === id) ?? null;
+    // W1-09 — accept either uuid or publicId on lookup. The in-memory fixture
+    // dataset always assigns `publicId: null`, so publicId lookups will never
+    // resolve here in test mode (they only matter against the prisma adapter
+    // against a real seeded DB).
+    return (
+      list.items.find((item) => item.id === id || (item.publicId !== null && item.publicId === id)) ??
+      null
+    );
   }
 
   public async list(query: {
@@ -82,6 +89,7 @@ export class InMemoryPersonDirectoryQueryRepository
           .map((item) => ({
             displayName: item.displayName,
             id: item.id,
+            publicId: null,
           }));
         const resourcePoolIds = activePoolMemberships
           .filter((membershipItem) => membershipItem.personId === person.id)
@@ -100,6 +108,7 @@ export class InMemoryPersonDirectoryQueryRepository
             ? {
                 displayName: lineManager.displayName,
                 id: lineManager.id,
+                publicId: null,
               }
             : null,
           currentOrgUnit: orgUnit
@@ -107,6 +116,7 @@ export class InMemoryPersonDirectoryQueryRepository
                 code: orgUnit.code,
                 id: orgUnit.id,
                 name: orgUnit.name,
+                publicId: null,
               }
             : null,
           displayName: person.displayName,
@@ -114,6 +124,7 @@ export class InMemoryPersonDirectoryQueryRepository
           grade: ('grade' in person ? (person as { grade?: string | null }).grade : null) ?? null,
           hiredAt: null,
           id: person.id,
+          publicId: null,
           lifecycleStatus: person.employmentStatus ?? 'ACTIVE',
           primaryEmail: person.primaryEmail ?? null,
           resourcePoolIds,

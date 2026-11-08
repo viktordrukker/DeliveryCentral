@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { ALL_ROLES, type AppRole } from '@/app/route-manifest';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
+import { RoleChipMultiSelect } from '@/components/common/RoleChipMultiSelect';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button, FormField, FormModal, Input, Switch, Table, type Column } from '@/components/ds';
@@ -36,22 +39,12 @@ const LEAVE_TYPES: { value: LeaveType; label: string }[] = [
   { value: 'OTHER', label: 'Other' },
 ];
 
-const ROLE_OPTIONS = [
-  'employee',
-  'project_manager',
-  'resource_manager',
-  'delivery_manager',
-  'hr_manager',
-  'director',
-  'admin',
-];
-
 interface FormState {
   name: string;
   leaveType: LeaveType;
   accrualPerYear: string;
   maxCarryOver: string;
-  approvalChain: string;
+  approvalChain: AppRole[];
   active: boolean;
 }
 
@@ -61,9 +54,13 @@ function emptyForm(): FormState {
     leaveType: 'ANNUAL',
     accrualPerYear: '20',
     maxCarryOver: '5',
-    approvalChain: 'hr_manager',
+    approvalChain: ['hr_manager'],
     active: true,
   };
+}
+
+function isAppRole(value: string): value is AppRole {
+  return (ALL_ROLES as string[]).includes(value);
 }
 
 function policyToForm(p: LeavePolicy): FormState {
@@ -72,16 +69,9 @@ function policyToForm(p: LeavePolicy): FormState {
     leaveType: p.leaveType,
     accrualPerYear: String(p.accrualPerYear),
     maxCarryOver: String(p.maxCarryOver),
-    approvalChain: p.approvalChain.join(', '),
+    approvalChain: p.approvalChain.filter(isAppRole),
     active: p.active,
   };
-}
-
-function parseChain(raw: string): string[] {
-  return raw
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
 }
 
 function labelForType(t: LeaveType): string {
@@ -125,7 +115,7 @@ export function LeavePolicyAdminPage(): JSX.Element {
     setEditing(p);
   }
 
-  function validateForm(): { accrual: number; carry: number; chain: string[] } | null {
+  function validateForm(): { accrual: number; carry: number; chain: AppRole[] } | null {
     const accrual = Number(form.accrualPerYear);
     const carry = Number(form.maxCarryOver);
     if (!form.name.trim()) {
@@ -140,7 +130,7 @@ export function LeavePolicyAdminPage(): JSX.Element {
       toast.error('Max carry-over must be 0–365.');
       return null;
     }
-    const chain = parseChain(form.approvalChain);
+    const chain = form.approvalChain;
     if (chain.length === 0) {
       toast.error('Approval chain must include at least one role.');
       return null;
@@ -294,6 +284,10 @@ export function LeavePolicyAdminPage(): JSX.Element {
     );
 
   const formOpen = creating || editing !== null;
+  const totalPolicies = policies.length;
+  const activePolicies = policies.filter((p) => p.active).length;
+  const inactivePolicies = totalPolicies - activePolicies;
+  const distinctTypes = new Set(policies.map((p) => p.leaveType)).size;
 
   return (
     <PageContainer testId="leave-policy-admin-page">
@@ -302,6 +296,53 @@ export function LeavePolicyAdminPage(): JSX.Element {
         subtitle="Configure per-leave-type accrual, max carry-over, and approval chains. Replaces hard-coded constants so HR governance can tune leave policy without code changes."
         title="Leave Policies"
       />
+
+      <div className="kpi-strip" aria-label="Leave policy metrics">
+        <Link
+          className="kpi-strip__item"
+          to="/admin/leave-policies"
+          style={{ borderLeft: '3px solid var(--color-accent)' }}
+        >
+          <span className="kpi-strip__value">{totalPolicies}</span>
+          <span className="kpi-strip__label">Policies</span>
+          <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>
+            total configured
+          </span>
+        </Link>
+        <Link
+          className="kpi-strip__item"
+          to="/admin/leave-policies"
+          style={{ borderLeft: '3px solid var(--color-status-active)' }}
+        >
+          <span className="kpi-strip__value">{activePolicies}</span>
+          <span className="kpi-strip__label">Active</span>
+          <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>
+            in force today
+          </span>
+        </Link>
+        <Link
+          className="kpi-strip__item"
+          to="/admin/leave-policies"
+          style={{ borderLeft: '3px solid var(--color-status-neutral)' }}
+        >
+          <span className="kpi-strip__value">{inactivePolicies}</span>
+          <span className="kpi-strip__label">Inactive</span>
+          <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>
+            retired
+          </span>
+        </Link>
+        <Link
+          className="kpi-strip__item"
+          to="/admin/leave-policies"
+          style={{ borderLeft: '3px solid var(--color-chart-5)' }}
+        >
+          <span className="kpi-strip__value">{distinctTypes}</span>
+          <span className="kpi-strip__label">Leave types</span>
+          <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>
+            covered
+          </span>
+        </Link>
+      </div>
 
       <div
         style={{
@@ -386,12 +427,12 @@ export function LeavePolicyAdminPage(): JSX.Element {
           />
         </FormField>
         <FormField
-          label="Approval chain (comma-separated role keys)"
-          hint={`Order matters. Allowed roles: ${ROLE_OPTIONS.join(', ')}`}
+          label="Approval chain"
+          hint="Pick the roles that must approve, in order. Click chips to remove."
         >
-          <Input
+          <RoleChipMultiSelect
             value={form.approvalChain}
-            onChange={(e) => setForm({ ...form, approvalChain: e.target.value })}
+            onChange={(next) => setForm({ ...form, approvalChain: next })}
           />
         </FormField>
         <FormField label="Active">

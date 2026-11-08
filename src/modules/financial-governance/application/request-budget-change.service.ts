@@ -144,6 +144,7 @@ export class RequestBudgetChangeService {
           data: {
             capexBudget: new Prisma.Decimal(command.capexBudget),
             opexBudget: new Prisma.Decimal(command.opexBudget),
+            updatedByPersonId: command.actorId,
           },
         });
       }

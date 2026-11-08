@@ -256,7 +256,7 @@ export function WorkforceOverviewChart({ data, targetUtilization = 80 }: Workfor
     (chartEvent: unknown) => {
       const e = chartEvent as { activePayload?: Array<{ payload?: WorkforceWeekData }> } | null;
       const week = e?.activePayload?.[0]?.payload?.week;
-      if (week) navigate(`/assignments?from=${week}`);
+      if (week) navigate(`/staffing-desk?from=${week}`);
     },
     [navigate],
   );
@@ -326,7 +326,7 @@ export function WorkforceOverviewChart({ data, targetUtilization = 80 }: Workfor
                 </div>
               ) },
               { key: 'go', title: '', width: 36, render: (r) => (
-                <Link to={`/assignments?from=${r.week}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link>
+                <Link to={`/staffing-desk?from=${r.week}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link>
               ) },
             ] as Column<EnrichedRow>[]}
             rows={pageRows}

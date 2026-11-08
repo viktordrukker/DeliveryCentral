@@ -1,0 +1,1 @@
+Snapshot artifacts directory. Actual `.png` snapshot files are NOT committed to the repo — they are uploaded as a CI workflow artifact by `.github/workflows/v2-playwright-baseline.yml` and downloaded for review.

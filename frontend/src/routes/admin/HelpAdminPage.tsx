@@ -20,6 +20,7 @@ import {
   Textarea,
   type Column,
 } from '@/components/ds';
+import { MarkdownBody } from '@/components/help/MarkdownBody';
 import {
   archiveHelpArticle,
   createHelpArticle,
@@ -389,7 +390,7 @@ export function HelpAdminPage(): JSX.Element {
         onSubmit={creating ? handleCreate : handleUpdate}
         title={creating ? 'New Help article' : 'Edit Help article'}
         submitLabel={creating ? 'Create' : 'Save changes'}
-        size="lg"
+        size="xl"
       >
         <FormField
           label="Slug (URL key)"
@@ -411,13 +412,47 @@ export function HelpAdminPage(): JSX.Element {
             onChange={(e) => setForm({ ...form, summary: e.target.value })}
           />
         </FormField>
-        <FormField label="Body (Markdown)" hint="Supports CommonMark; rendered on the public page.">
-          <Textarea
-            rows={12}
-            value={form.body}
-            onChange={(e) => setForm({ ...form, body: e.target.value })}
-            style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 13 }}
-          />
+        <FormField
+          label="Body (Markdown)"
+          hint="Supports CommonMark; rendered on the public page. Preview updates live."
+        >
+          <div
+            data-testid="help-admin-body-editor"
+            style={{
+              display: 'grid',
+              gap: 'var(--space-3)',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            }}
+          >
+            <Textarea
+              aria-label="Markdown source"
+              rows={16}
+              value={form.body}
+              onChange={(e) => setForm({ ...form, body: e.target.value })}
+              style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 13 }}
+            />
+            <div
+              aria-label="Markdown preview"
+              data-testid="help-admin-body-preview"
+              style={{
+                background: 'var(--color-surface-alt)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-md)',
+                maxHeight: 360,
+                minHeight: 240,
+                overflow: 'auto',
+                padding: 'var(--space-3)',
+              }}
+            >
+              {form.body.trim() ? (
+                <MarkdownBody source={form.body} />
+              ) : (
+                <span style={{ color: 'var(--color-text-subtle)', fontSize: 12 }}>
+                  Preview appears here as you type Markdown on the left.
+                </span>
+              )}
+            </div>
+          </div>
         </FormField>
         <FormField label="Tags" hint="Comma-separated. Used as filters on the public list.">
           <Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />

@@ -10,7 +10,6 @@ import { ProjectExternalLink } from '@src/modules/project-registry/domain/entiti
 import { ExternalProjectKey } from '@src/modules/project-registry/domain/value-objects/external-project-key';
 import { ExternalSystemType } from '@src/modules/project-registry/domain/value-objects/external-system-type';
 import { ProjectId } from '@src/modules/project-registry/domain/value-objects/project-id';
-import { createSeededInMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/create-seeded-in-memory-project-assignment.repository';
 import { createSeededInMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/create-seeded-in-memory-project.repository';
 import { InMemoryProjectExternalLinkRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project-external-link.repository';
 import { createAppPrismaClient } from '../helpers/db/create-app-prisma-client';
@@ -42,7 +41,6 @@ describe('Project directory', () => {
     const service = new ProjectDirectoryQueryService(
       createSeededInMemoryProjectRepository(),
       createSeededExternalLinkRepository(),
-      createSeededInMemoryProjectAssignmentRepository(),
     );
 
     const result = await service.execute({});
@@ -55,7 +53,6 @@ describe('Project directory', () => {
     const service = new ProjectDirectoryQueryService(
       createSeededInMemoryProjectRepository(),
       createSeededExternalLinkRepository(),
-      createSeededInMemoryProjectAssignmentRepository(),
     );
 
     const result = await service.execute({ source: 'jira' });
@@ -68,7 +65,6 @@ describe('Project directory', () => {
     const service = new GetProjectByIdService(
       createSeededInMemoryProjectRepository(),
       createSeededExternalLinkRepository(),
-      createSeededInMemoryProjectAssignmentRepository(),
     );
 
     const result = await service.execute('33333333-3333-3333-3333-333333333003');

@@ -1,22 +1,27 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { AssignmentDirectoryItemDto } from '@src/modules/assignments/application/contracts/assignment-directory.dto';
-import { ListAssignmentsService } from '@src/modules/assignments/application/list-assignments.service';
 import { PersonDirectoryQueryService } from '@src/modules/organization/application/person-directory-query.service';
 import { TimesheetsService } from '@src/modules/timesheets/application/timesheets.service';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { EmployeeDashboardResponseDto } from './contracts/employee-dashboard.dto';
+import { PositionDirectoryItemDto } from './contracts/position-directory-item.dto';
 
 interface EmployeeDashboardQuery {
   asOf?: string;
   personId: string;
 }
 
+// SoT PR 14b — employee dashboard sources the person's assignments-as-DTO
+// list from the canonical `ProjectPosition` aggregate (no longer through
+// the legacy `ListAssignmentsService` → `prisma.projectAssignment` path).
+// The shape produced (`PositionDirectoryItemDto`) is byte-for-byte
+// compatible with the FE consumer's expectations.
 @Injectable()
 export class EmployeeDashboardQueryService {
   public constructor(
     private readonly personDirectoryQueryService: PersonDirectoryQueryService,
-    private readonly listAssignmentsService: ListAssignmentsService,
     private readonly timesheetsService: TimesheetsService,
+    private readonly prisma: PrismaService,
   ) {}
 
   public async execute(query: EmployeeDashboardQuery): Promise<EmployeeDashboardResponseDto> {
@@ -31,17 +36,66 @@ export class EmployeeDashboardQueryService {
       throw new NotFoundException('Employee dashboard person was not found.');
     }
 
-    const assignmentResult = await this.listAssignmentsService.execute({
-      personId: query.personId,
+    const positionRows = await this.prisma.projectPosition.findMany({
+      where: { activePersonId: query.personId },
+      select: {
+        id: true,
+        projectId: true,
+        role: true,
+        fillStatus: true,
+        activeAllocationPercent: true,
+        requiredAllocationPercent: true,
+        activeValidFrom: true,
+        activeValidTo: true,
+        startDate: true,
+        endDate: true,
+        version: true,
+        slaStage: true,
+        slaDueAt: true,
+        slaBreachedAt: true,
+        requiresDirectorApproval: true,
+        project: { select: { name: true } },
+      },
     });
-    const currentAssignments = assignmentResult.items
+
+    const items: PositionDirectoryItemDto[] = positionRows.map((row) => {
+      const allocation = row.activeAllocationPercent ?? row.requiredAllocationPercent;
+      const allocationNumber = Number(typeof allocation === 'number' ? allocation : (allocation as { toNumber(): number }).toNumber());
+      const start = row.activeValidFrom ?? row.startDate;
+      const end = row.activeValidTo ?? null;
+      return {
+        id: row.id,
+        person: {
+          id: query.personId,
+          displayName: person.displayName,
+        },
+        project: {
+          id: row.projectId,
+          displayName: row.project.name,
+        },
+        staffingRole: row.role,
+        allocationPercent: allocationNumber,
+        startDate: start.toISOString(),
+        endDate: end ? end.toISOString() : null,
+        approvalState: row.fillStatus,
+        version: row.version,
+        slaStage: row.slaStage ?? null,
+        slaDueAt: row.slaDueAt ? row.slaDueAt.toISOString() : null,
+        slaBreachedAt: row.slaBreachedAt ? row.slaBreachedAt.toISOString() : null,
+        requiresDirectorApproval: row.requiresDirectorApproval,
+      };
+    });
+
+    const currentAssignments = items
       .filter((item) => this.isCurrentAssignment(item, asOf))
       .sort((left, right) => left.startDate.localeCompare(right.startDate));
-    const futureAssignments = assignmentResult.items
+    const futureAssignments = items
       .filter((item) => this.isFutureAssignment(item, asOf))
       .sort((left, right) => left.startDate.localeCompare(right.startDate));
-    const pendingWorkflowAssignments = assignmentResult.items
-      .filter((item) => item.approvalState === 'REQUESTED')
+    // Lean fillStatus has no direct `REQUESTED` equivalent — PROPOSED/DRAFT
+    // are the lean states for "demand outstanding before booking".
+    const pendingWorkflowAssignments = items
+      .filter((item) => item.approvalState === 'PROPOSED' || item.approvalState === 'DRAFT')
       .sort((left, right) => left.startDate.localeCompare(right.startDate));
 
     // Fetch rejected timesheets from the last 90 days — employee needs to resubmit these
@@ -76,7 +130,7 @@ export class EmployeeDashboardQueryService {
         pendingSelfWorkflowItemCount: pendingWorkflowAssignments.length + rejectedTimesheets.length,
         totalAllocationPercent,
       },
-      dataSources: ['person_directory', 'assignments', 'timesheets', 'notifications_placeholder'],
+      dataSources: ['person_directory', 'project_positions', 'timesheets', 'notifications_placeholder'],
       futureAssignments,
       notificationsSummary: {
         note: 'Employee notification inbox summary is not enabled yet.',
@@ -108,8 +162,10 @@ export class EmployeeDashboardQueryService {
     };
   }
 
-  private isCurrentAssignment(item: AssignmentDirectoryItemDto, asOf: Date): boolean {
-    if (!['ACTIVE', 'APPROVED'].includes(item.approvalState)) {
+  private isCurrentAssignment(item: PositionDirectoryItemDto, asOf: Date): boolean {
+    // Lean equivalent of the legacy ACTIVE / APPROVED set:
+    // BOOKED / ONBOARDING / ASSIGNED / ON_HOLD == currently-committed fill.
+    if (!['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'].includes(item.approvalState)) {
       return false;
     }
 
@@ -119,8 +175,8 @@ export class EmployeeDashboardQueryService {
     return startDate <= asOf && (!endDate || endDate >= asOf);
   }
 
-  private isFutureAssignment(item: AssignmentDirectoryItemDto, asOf: Date): boolean {
-    if (!['ACTIVE', 'APPROVED'].includes(item.approvalState)) {
+  private isFutureAssignment(item: PositionDirectoryItemDto, asOf: Date): boolean {
+    if (!['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'].includes(item.approvalState)) {
       return false;
     }
 

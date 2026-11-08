@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
+import { DIRECTOR_ADMIN_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataFreshness } from '@/components/dashboard/DataFreshness';
@@ -15,6 +16,7 @@ import { fetchMoodHeatmap, MoodHeatmapResponse } from '@/lib/api/pulse';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import { fetchResourcePools } from '@/lib/api/resource-pools';
 import { fetchCases } from '@/lib/api/cases';
+import { fetchHeadcountTrend, HeadcountTrendPoint } from '@/lib/api/headcount-trend';
 
 import { HrHeadcountTab } from './hr-tabs/HeadcountTab';
 import { HrOrganizationTab } from './hr-tabs/OrganizationTab';
@@ -23,6 +25,7 @@ import { HrRolesTab } from './hr-tabs/RolesTab';
 import { HrLifecycleTab } from './hr-tabs/LifecycleTab';
 import { HrWellbeingTab } from './hr-tabs/WellbeingTab';
 import { Button } from '@/components/ds';
+import { PersonSelect } from '@/components/common/PersonSelect';
 import { HrActionCardsPanel } from '@/components/hr/HrActionCardsPanel';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 
@@ -40,7 +43,13 @@ export function HrDashboardPage(): JSX.Element {
   const { principal, isLoading: authLoading } = useAuth();
   const { setActions } = useTitleBarActions();
   const navigate = useNavigate();
-  const effectivePersonId = authLoading ? null : (searchParams.get('personId') ?? principal?.personId ?? undefined);
+  // W1-24 — `?personId=X` overlays a different person's dashboard. Restrict
+  // this to director/admin (line-manager-of-X check happens server-side via
+  // `@AllowSelfScope`). For everyone else the overlay is silently ignored —
+  // they see only their own dashboard. Same gate is applied in PM dashboard.
+  const canOverlayOthers = hasAnyRole(principal?.roles, DIRECTOR_ADMIN_ROLES);
+  const overlayPersonId = canOverlayOthers ? searchParams.get('personId') : null;
+  const effectivePersonId = authLoading ? null : (overlayPersonId ?? principal?.personId ?? undefined);
   const state = useHrManagerDashboard(effectivePersonId);
   const [openCaseSubjects, setOpenCaseSubjects] = useState<string[]>([]);
   const [lastFetch, setLastFetch] = useState(new Date());
@@ -63,6 +72,18 @@ export function HrDashboardPage(): JSX.Element {
         setOpenCaseSubjects(subjects);
       })
       .catch(() => undefined);
+  }, []);
+
+  // W2-08 — real headcount trend (replaces fabricated identical-value array).
+  // `null` until the request settles; on failure stays `null` so HeadcountTab
+  // renders an EmptyState instead of a fake chart.
+  const [headcountTrend, setHeadcountTrend] = useState<HeadcountTrendPoint[] | null>(null);
+  useEffect(() => {
+    let active = true;
+    void fetchHeadcountTrend(6)
+      .then((data) => { if (active) setHeadcountTrend(data); })
+      .catch(() => { if (active) setHeadcountTrend(null); });
+    return () => { active = false; };
   }, []);
 
   const [heatmapManagerId, setHeatmapManagerId] = useState<string>('');
@@ -95,6 +116,8 @@ export function HrDashboardPage(): JSX.Element {
   }, [heatmapManagerId, heatmapPoolId]);
 
   function handlePersonChange(value: string): void {
+    // W1-24 — only director/admin can overlay a different person.
+    if (!canOverlayOthers) return;
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       next.set('personId', value);
@@ -106,32 +129,25 @@ export function HrDashboardPage(): JSX.Element {
   useEffect(() => {
     setActions(
       <>
-        <label className="field field--inline" style={{ fontSize: 12 }}>
-          <input
-            className="field__control"
-            list="hr-people-list-tb"
-            onChange={(event) => {
-              const match = state.people.find((p) => p.displayName === event.target.value);
-              if (match) handlePersonChange(match.id);
-            }}
-            placeholder="Search HR managers..."
-            type="text"
-            defaultValue={state.people.find((p) => p.id === state.personId)?.displayName ?? ''}
-            key={state.personId}
+        {/* W1-24 — only director/admin see the person-overlay search box.
+            W4-01 — switched from raw <input>+<datalist> to DS PersonSelect
+            (passes state.people through to preserve the hr_manager role
+            filter the dashboard hook applies). */}
+        {canOverlayOthers ? (
+          <PersonSelect
+            label="HR manager"
+            onChange={handlePersonChange}
+            people={state.people}
+            value={state.personId}
           />
-          <datalist id="hr-people-list-tb">
-            {state.people.map((person) => (
-              <option key={person.id} value={person.displayName} />
-            ))}
-          </datalist>
-        </label>
+        ) : null}
         <Button as={Link} variant="secondary" size="sm" to="/people">Employee directory</Button>
         <Button as={Link} variant="secondary" size="sm" to="/cases">Cases</Button>
         <TipTrigger />
       </>
     );
     return () => setActions(null);
-  }, [setActions, state.people, state.personId, state.asOf]);
+  }, [setActions, state.people, state.personId, state.asOf, canOverlayOthers]);
 
   useEffect(() => {
     if (state.data && !state.isLoading) setLastFetch(new Date());
@@ -145,14 +161,6 @@ export function HrDashboardPage(): JSX.Element {
   const withoutOrgUnit = d?.employeesWithoutOrgUnit.length ?? 0;
   const dataIssues = withoutManager + withoutOrgUnit;
   const atRisk = d?.atRiskEmployees ?? [];
-
-  const headcountTrend = d
-    ? Array.from({ length: 6 }, (_, i) => {
-        const dt = new Date(state.asOf);
-        dt.setMonth(dt.getMonth() - (5 - i));
-        return { count: d.headcountSummary.activeHeadcount, month: dt.toISOString().slice(0, 7) };
-      })
-    : [];
 
   const dataQualityScores = {
     assignmentPct: 100,

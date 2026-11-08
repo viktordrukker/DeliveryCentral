@@ -67,11 +67,6 @@ const ASSIGNMENTS_CALLSITES: CallsiteDisposition[] = [
     note: 'Hook re-points to listProjectPositions via mapper (LEAN-P2-2).',
   },
   {
-    file: 'frontend/src/features/assignments/useAssignmentDetails.ts',
-    disposition: 'hook-already-migrated',
-    note: 'Hook re-points to project-positions read endpoint (LEAN-P2-2).',
-  },
-  {
     file: 'frontend/src/features/assignments/useCreateAssignmentPage.ts',
     disposition: 'hook-already-migrated',
     note: 'Hook layer re-pointed (LEAN-P2-2). Write call still uses legacy.',
@@ -80,11 +75,6 @@ const ASSIGNMENTS_CALLSITES: CallsiteDisposition[] = [
     file: 'frontend/src/features/assignments/useBulkAssignmentPage.ts',
     disposition: 'hook-already-migrated',
     note: 'Hook layer re-pointed (LEAN-P2-2). Write call still uses legacy.',
-  },
-  {
-    file: 'frontend/src/features/assignments/workflow-progression.ts',
-    disposition: 'type-only',
-    note: 'Imports `AssignmentStatusValue` type for state-machine encoding.',
   },
   // ── read paths now via mapper (LEAN-P2-8) ─────────────────────────────
   {
@@ -120,8 +110,8 @@ const ASSIGNMENTS_CALLSITES: CallsiteDisposition[] = [
   },
   {
     file: 'frontend/src/routes/projects/tabs/TeamVendorsTab.tsx',
-    disposition: 'read-deferred',
-    note: 'Read by projectId — clean swap candidate for LEAN-P2-9 follow-up.',
+    disposition: 'read-via-mapper',
+    note: 'W3-11: table columns bound directly to ProjectPosition. Mapper is only used to feed the shared StaffingSwimLaneGantt, which still consumes the legacy directory shape.',
   },
   {
     file: 'frontend/src/components/common/CommandPalette.tsx',
@@ -155,11 +145,6 @@ const ASSIGNMENTS_CALLSITES: CallsiteDisposition[] = [
     note: 'Calls createAssignment — needs LEAN-P2-10 write bridge.',
   },
   {
-    file: 'frontend/src/routes/assignments/AssignmentDetailsPlaceholderPage.tsx',
-    disposition: 'write-deferred',
-    note: 'Calls directorApproveAssignment — needs LEAN-P2-10 write bridge.',
-  },
-  {
     file: 'frontend/src/components/assignments/CreateAssignmentModal.tsx',
     disposition: 'write-deferred',
     note: 'Calls createAssignment — needs LEAN-P2-10 write bridge.',
@@ -181,16 +166,6 @@ const ASSIGNMENTS_CALLSITES: CallsiteDisposition[] = [
   },
   // ── pure type-only imports (safe to keep) ──────────────────────────────
   {
-    file: 'frontend/src/components/projects/AssignmentTable.tsx',
-    disposition: 'type-only',
-    note: 'Imports AssignmentDirectoryItem for prop typing.',
-  },
-  {
-    file: 'frontend/src/components/assignments/AssignmentsTable.tsx',
-    disposition: 'type-only',
-    note: 'Imports AssignmentDirectoryItem for prop typing.',
-  },
-  {
     file: 'frontend/src/components/assignments/AssignmentWorkflowActions.tsx',
     disposition: 'type-only',
     note: 'Imports AssignmentStatusValue type.',
@@ -199,11 +174,6 @@ const ASSIGNMENTS_CALLSITES: CallsiteDisposition[] = [
     file: 'frontend/src/components/assignments/AssignmentHistoryTimeline.tsx',
     disposition: 'type-only',
     note: 'Imports AssignmentHistoryItem type.',
-  },
-  {
-    file: 'frontend/src/components/assignments/BulkAssignmentResults.tsx',
-    disposition: 'type-only',
-    note: 'Imports BulkAssignmentResponse type.',
   },
   {
     file: 'frontend/src/components/projects/StaffingSwimLaneGantt.tsx',
@@ -256,11 +226,6 @@ const ASSIGNMENTS_CALLSITES: CallsiteDisposition[] = [
     disposition: 'type-only',
     note: 'Test mocks legacy `fetchAssignments` consumed by useCreateCasePage.',
   },
-  {
-    file: 'frontend/src/routes/assignments/AssignmentDetailsPage.test.tsx',
-    disposition: 'type-only',
-    note: 'Test mocks legacy `directorApproveAssignment` write call.',
-  },
 ];
 
 const STAFFING_REQUESTS_CALLSITES: CallsiteDisposition[] = [
@@ -269,11 +234,6 @@ const STAFFING_REQUESTS_CALLSITES: CallsiteDisposition[] = [
     file: 'frontend/src/features/staffing-desk/useStaffingDeskActions.ts',
     disposition: 'hook-already-migrated',
     note: 'Hook layer re-pointed in LEAN-P2-2 batch (issue 206).',
-  },
-  {
-    file: 'frontend/src/components/staffing/StaffingRequestStatusBadge.tsx',
-    disposition: 'type-only',
-    note: 'Imports StaffingRequestStatus type for badge dispatch.',
   },
   {
     file: 'frontend/src/components/staffing-requests/StaffingRequestDrawer.tsx',
@@ -313,19 +273,9 @@ const STAFFING_REQUESTS_CALLSITES: CallsiteDisposition[] = [
     note: 'Calls checkAllocationConflict — pending the same conflict-check re-home.',
   },
   {
-    file: 'frontend/src/components/staffing-requests/ProposalReviewPanel.tsx',
-    disposition: 'write-deferred',
-    note: 'Calls into staffing-requests proposal review write endpoints — covered by LEAN-P2-10.',
-  },
-  {
     file: 'frontend/src/components/staffing-requests/StaffingRequestForm.tsx',
     disposition: 'write-deferred',
     note: 'Calls into staffing-requests create write endpoints — covered by LEAN-P2-10.',
-  },
-  {
-    file: 'frontend/src/components/staffing-requests/ProposalBuilderDrawer.tsx',
-    disposition: 'write-deferred',
-    note: 'Calls into staffing-requests proposal write endpoints — covered by LEAN-P2-10.',
   },
 ];
 
@@ -361,15 +311,17 @@ describe('LEAN-P2-8 callsite audit lock', () => {
   // when files are added or removed from the audit set — the mismatch is
   // intentional drift detection.
   it('locks audit counts (update when callsites are added or removed)', () => {
-    expect(ASSIGNMENTS_CALLSITES.length).toBe(41);
-    expect(STAFFING_REQUESTS_CALLSITES.length).toBe(12);
+    expect(ASSIGNMENTS_CALLSITES.length).toBe(34);
+    expect(STAFFING_REQUESTS_CALLSITES.length).toBe(9);
   });
 
-  it('records exactly one read-via-mapper migration (LEAN-P2-8 scope: ExportCentrePage)', () => {
+  it('records the read-via-mapper migrations (LEAN-P2-8: ExportCentrePage, W3-11: TeamVendorsTab)', () => {
     const migrated = ASSIGNMENTS_CALLSITES.filter(
       (e) => e.disposition === 'read-via-mapper',
     );
-    expect(migrated).toHaveLength(1);
-    expect(migrated[0].file).toBe('frontend/src/routes/reports/ExportCentrePage.tsx');
+    expect(migrated.map((e) => e.file).sort()).toEqual([
+      'frontend/src/routes/projects/tabs/TeamVendorsTab.tsx',
+      'frontend/src/routes/reports/ExportCentrePage.tsx',
+    ]);
   });
 });

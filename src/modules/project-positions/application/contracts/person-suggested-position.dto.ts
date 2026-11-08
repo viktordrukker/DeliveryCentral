@@ -8,6 +8,10 @@ import { ApiProperty } from '@nestjs/swagger';
  */
 export class PersonSuggestedPositionDto {
   @ApiProperty() positionId!: string;
+  // W1-11 — opaque tenant-scoped identifier (`pos_…`) preferred for deep
+  // links into the position detail page. Null until the foundation backfill
+  // covers legacy rows.
+  @ApiProperty({ nullable: true }) positionPublicId!: string | null;
   @ApiProperty() projectId!: string;
   @ApiProperty() projectName!: string;
   @ApiProperty() role!: string;

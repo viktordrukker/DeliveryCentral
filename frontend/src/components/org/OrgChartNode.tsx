@@ -269,7 +269,7 @@ export function renderDeptNodeContent(
           background: var(--color-accent-soft); color: var(--color-accent-text); font-weight: 500;
         ">${node.kind ? escapeHtml(humanizeEnum(node.kind, ORG_UNIT_TYPE_LABELS)) : 'Unit'}</span>
         <span style="font-size: 10px; color: var(--color-text-muted);">${node.memberCount} members</span>
-        <span style="font-size: 10px; color: var(--color-text-subtle);">\u00B7 ${node.activeAssignments} assignments</span>
+        <span style="font-size: 10px; color: var(--color-text-subtle);">\u00B7 ${node.activeAssignments} positions</span>
       </div>
 
       <!-- Alert badges -->

@@ -192,7 +192,9 @@ export class MonthlyTimesheetService {
           projectId: e.projectId,
           projectCode: proj?.projectCode ?? 'UNKNOWN',
           projectName: proj?.name ?? e.projectId,
-          assignmentId: e.assignmentId,
+          // LEAN PR 16a/2 — source from `positionId` (canonical). The DTO
+          // field name stays `assignmentId` for FE compatibility.
+          assignmentId: e.positionId,
           benchCategory: e.benchCategory ?? '',
           workLabel: e.workLabel ?? '',
           workItemId: e.workItemId ?? null,
@@ -393,8 +395,15 @@ export class MonthlyTimesheetService {
               date,
             },
           },
-          create: { timesheetWeekId: week.id, projectId: a.projectId, date, hours: new Prisma.Decimal(hours.toFixed(2)) },
-          update: {},
+          create: {
+            timesheetWeekId: week.id,
+            projectId: a.projectId,
+            date,
+            hours: new Prisma.Decimal(hours.toFixed(2)),
+            createdByPersonId: personId,
+            updatedByPersonId: personId,
+          },
+          update: { updatedByPersonId: personId },
         });
         filledHours += hours;
       }
@@ -502,8 +511,10 @@ export class MonthlyTimesheetService {
             hours: new Prisma.Decimal(hours.toFixed(2)), capex: entry.capex,
             benchCategory: entry.benchCategory,
             workLabel: entry.workLabel,
+            createdByPersonId: personId,
+            updatedByPersonId: personId,
           },
-          update: {},
+          update: { updatedByPersonId: personId },
         });
         copiedHours += hours;
       }

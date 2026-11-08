@@ -106,6 +106,20 @@ export async function fetchMetadataDictionaryById(
   return httpGet<MetadataDictionaryDetails>(`/metadata/dictionaries/${id}`);
 }
 
+/**
+ * W1-19 — key-based lookup for metadata dictionaries so FE callers don't
+ * embed hardcoded UUIDs. (entityType, dictionaryKey) is the natural key
+ * already enforced by `@@unique` on MetadataDictionary.
+ */
+export async function fetchMetadataDictionaryByKey(
+  entityType: string,
+  dictionaryKey: string,
+): Promise<MetadataDictionaryDetails> {
+  return httpGet<MetadataDictionaryDetails>(
+    `/metadata/dictionaries/by-key/${encodeURIComponent(entityType)}/${encodeURIComponent(dictionaryKey)}`,
+  );
+}
+
 export async function createMetadataDictionaryEntry(
   type: string,
   request: CreateMetadataDictionaryEntryRequest,

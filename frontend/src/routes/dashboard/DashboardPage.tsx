@@ -73,7 +73,7 @@ export function DashboardPage(): JSX.Element {
           onChange={(r) => { setRangeFrom(r.from); setRangeTo(r.to); }}
         />
         <Button as={Link} variant="secondary" size="sm" to="/projects">Projects</Button>
-        <Button as={Link} variant="secondary" size="sm" to="/assignments">Assignments</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/staffing-desk">Positions</Button>
         <Button as={Link} variant="secondary" size="sm" to="/dashboard/planned-vs-actual">Planned vs actual</Button>
         <TipTrigger />
       </>
@@ -136,7 +136,10 @@ export function DashboardPage(): JSX.Element {
       items.push({
         code: project.projectCode,
         entity: project.name,
-        href: `/projects/${project.id}`,
+        // W3-12 — canonical staffing surface is /staffing-desk (not legacy
+        // /staffing-requests). Deep-link the project filter so the user
+        // lands on the board ready to open positions.
+        href: `/staffing-desk?view=board&projectId=${encodeURIComponent(project.id)}`,
         id: `unstaffed-${project.id}`,
         impact: 'No staff assigned — delivery at risk',
         index: items.length + 1,
@@ -144,7 +147,7 @@ export function DashboardPage(): JSX.Element {
         severity: 'High',
         severityTone: 'danger',
         status: 'Open',
-        suggestedAction: 'Create staffing request',
+        suggestedAction: 'Open staffing desk',
         type: 'Unstaffed Project',
       });
     });
@@ -306,10 +309,10 @@ export function DashboardPage(): JSX.Element {
               <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>across all teams</span>
             </Link>
 
-            <Link className="kpi-strip__item" to="/assignments" style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
+            <Link className="kpi-strip__item" to="/staffing-desk" style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
               <TipBalloon tip="People currently assigned to projects. The sparkline shows the 12-week trend." arrow="left" />
               <span className="kpi-strip__value">{activeAssignments}</span>
-              <span className="kpi-strip__label">Active Assignments</span>
+              <span className="kpi-strip__label">Active Positions</span>
               {assignmentSpark.length > 3 && <div className="kpi-strip__sparkline"><SparklineDs data={assignmentSpark} height={24} width={72} tone="accent" /></div>}
             </Link>
 

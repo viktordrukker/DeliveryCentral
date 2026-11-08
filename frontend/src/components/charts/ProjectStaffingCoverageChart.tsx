@@ -28,9 +28,9 @@ export function ProjectStaffingCoverageChart({ data, csvData }: ProjectStaffingC
     const e = entry as { activePayload?: Array<{ payload: { name: string; projectId?: string } }> } | null;
     const payload = e?.activePayload?.[0]?.payload;
     if (payload?.projectId) {
-      void navigate(`/assignments?projectId=${payload.projectId}`);
+      void navigate(`/projects/${payload.projectId}`);
     } else if (payload?.name) {
-      void navigate(`/assignments?projectName=${encodeURIComponent(payload.name)}`);
+      void navigate(`/staffing-desk?projectName=${encodeURIComponent(payload.name)}`);
     }
   }
 
@@ -41,7 +41,7 @@ export function ProjectStaffingCoverageChart({ data, csvData }: ProjectStaffingC
         label: 'View details',
         onClick: () => {
           if (payload?.projectId) {
-            void navigate(`/assignments?projectId=${payload.projectId}`);
+            void navigate(`/projects/${payload.projectId}`);
           }
         },
       },

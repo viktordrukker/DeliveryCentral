@@ -1,6 +1,8 @@
 import { FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { useAuth } from '@/app/auth-context';
+import { ADMIN_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { NotificationOutcomeList } from '@/components/admin/NotificationOutcomeList';
 import { SendTestPanel } from '@/components/admin/SendTestPanel';
 import { TemplateList } from '@/components/admin/TemplateList';
@@ -8,6 +10,8 @@ import { TemplatePreview } from '@/components/admin/TemplatePreview';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
+import { PaginationControls } from '@/components/common/PaginationControls';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import { formatDateTime } from '@/lib/format-date';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -35,6 +39,11 @@ export function NotificationsPage(): JSX.Element {
   );
   const state = useNotificationTemplates();
   const queue = useNotificationQueue();
+  // W1-26 — director sees a read-only view: the surface is hidden from
+  // navigation for them by the manifest, but if they deep-link in they should
+  // not see Send-test or Requeue write actions. Only admin gets write controls.
+  const { principal } = useAuth();
+  const canEdit = hasAnyRole(principal?.roles, ADMIN_ROLES);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -50,6 +59,12 @@ export function NotificationsPage(): JSX.Element {
 
   const totalPages = Math.max(1, Math.ceil(queue.totalCount / queue.pageSize));
 
+  const templateCount = state.templates.length;
+  const queuedCount = queue.items.filter((i) => i.status === 'QUEUED' || i.status === 'RETRYING')
+    .length;
+  const failedCount = queue.items.filter((i) => i.status === 'FAILED_TERMINAL').length;
+  const sentCount = queue.items.filter((i) => i.status === 'SENT').length;
+
   return (
     <PageContainer viewport>
       <PageHeader
@@ -62,6 +77,69 @@ export function NotificationsPage(): JSX.Element {
         subtitle="Review configured notification templates and send safe test messages without exposing channel secrets."
         title="Notification Templates"
       />
+
+      <div className="kpi-strip" aria-label="Notification metrics">
+        <Link
+          className="kpi-strip__item"
+          to="/admin/notifications"
+          style={{ borderLeft: '3px solid var(--color-accent)' }}
+        >
+          <span className="kpi-strip__value">{templateCount}</span>
+          <span className="kpi-strip__label">Templates</span>
+          <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>
+            configured
+          </span>
+        </Link>
+        <Link
+          className="kpi-strip__item"
+          to="/admin/notifications"
+          style={{
+            borderLeft: `3px solid ${
+              queuedCount > 0 ? 'var(--color-status-warning)' : 'var(--color-status-neutral)'
+            }`,
+          }}
+        >
+          <span className="kpi-strip__value">{queuedCount}</span>
+          <span className="kpi-strip__label">Queued</span>
+          <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>
+            awaiting delivery
+          </span>
+        </Link>
+        <Link
+          className="kpi-strip__item"
+          to="/admin/notifications"
+          style={{
+            borderLeft: `3px solid ${
+              failedCount > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'
+            }`,
+          }}
+        >
+          <span className="kpi-strip__value">{failedCount}</span>
+          <span className="kpi-strip__label">Failed</span>
+          <span
+            className="kpi-strip__context"
+            style={{
+              color:
+                failedCount > 0
+                  ? 'var(--color-status-danger)'
+                  : 'var(--color-status-active)',
+            }}
+          >
+            {failedCount > 0 ? 'requires requeue' : '✓ all clear'}
+          </span>
+        </Link>
+        <Link
+          className="kpi-strip__item"
+          to="/admin/notifications"
+          style={{ borderLeft: '3px solid var(--color-status-active)' }}
+        >
+          <span className="kpi-strip__value">{sentCount}</span>
+          <span className="kpi-strip__label">Sent</span>
+          <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>
+            on this page
+          </span>
+        </Link>
+      </div>
 
       {state.isLoading ? <LoadingState label="Loading notification templates..." variant="skeleton" skeletonType="table" /> : null}
       {state.error && !state.selectedTemplate ? <ErrorState description={state.error} /> : null}
@@ -86,15 +164,18 @@ export function NotificationsPage(): JSX.Element {
 
             <div className="dictionary-editor">
               <TemplatePreview template={state.selectedTemplate} />
-              <SendTestPanel
-                error={state.error}
-                isSubmitting={state.isSubmitting}
-                onChange={handleChange}
-                onSubmit={handleSubmit}
-                result={state.result}
-                template={state.selectedTemplate}
-                values={values}
-              />
+              {/* W1-26 — only admin can send test notifications. Director is read-only. */}
+              {canEdit ? (
+                <SendTestPanel
+                  error={state.error}
+                  isSubmitting={state.isSubmitting}
+                  onChange={handleChange}
+                  onSubmit={handleSubmit}
+                  result={state.result}
+                  template={state.selectedTemplate}
+                  values={values}
+                />
+              ) : null}
               {state.successMessage ? (
                 <div className="success-banner" role="status">
                   {state.successMessage}
@@ -153,7 +234,7 @@ export function NotificationsPage(): JSX.Element {
                   { key: 'recipient', title: 'Recipient', getValue: (i) => i.recipient, render: (i) => i.recipient },
                   { key: 'event', title: 'Event', getValue: (i) => i.eventName, render: (i) => i.eventName },
                   { key: 'status', title: 'Status', getValue: (i) => i.status, render: (i) => (
-                    <span className={`status-badge status-badge--${i.status.toLowerCase()}`}>{i.status}</span>
+                    <StatusBadge status={i.status} />
                   ) },
                   { key: 'attempts', title: 'Attempts', getValue: (i) => i.attemptCount, render: (i) => `${i.attemptCount} / ${i.maxAttempts}` },
                   { key: 'requestedAt', title: 'Requested At', getValue: (i) => i.requestedAt, render: (i) => formatDateTime(i.requestedAt) },
@@ -174,7 +255,8 @@ export function NotificationsPage(): JSX.Element {
                     </>
                   ) },
                   { key: 'actions', title: 'Actions', render: (i) => (
-                    i.status === 'FAILED_TERMINAL' ? (
+                    // W1-26 — Requeue is admin-only. Director is read-only.
+                    i.status === 'FAILED_TERMINAL' && canEdit ? (
                       <Button variant="secondary" size="sm" disabled={queue.isLoading} onClick={() => { void queue.handleRequeue(i.id); }} type="button">
                         Requeue
                       </Button>
@@ -186,18 +268,15 @@ export function NotificationsPage(): JSX.Element {
               />
             )}
 
-            {queue.totalCount > queue.pageSize ? (
-              <div className="pagination">
-                <Button variant="secondary" disabled={queue.page <= 1 || queue.isLoading} onClick={queue.handlePrevPage} type="button">
-                  Previous
-                </Button>
-                <span className="pagination__info">
-                  Page {queue.page} of {totalPages}
-                </span>
-                <Button variant="secondary" disabled={queue.page >= totalPages || queue.isLoading} onClick={queue.handleNextPage} type="button">
-                  Next
-                </Button>
-              </div>
+            {queue.items.length > 0 ? (
+              <PaginationControls
+                page={queue.page}
+                pageSize={queue.pageSize}
+                totalItems={queue.totalCount}
+                onPageChange={queue.handlePageChange}
+                onPageSizeChange={queue.handlePageSizeChange}
+                itemLabel="requests"
+              />
             ) : null}
           </>
         ) : null}

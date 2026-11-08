@@ -580,14 +580,14 @@ export function CaseDetailsPage(): JSX.Element {
                   </dd>
                 </div>
                 <div>
-                  <dt>Related Assignment</dt>
+                  <dt>Related Position</dt>
                   <dd>
-                    {displayCase.relatedAssignmentId ? (
-                      <Link to={`/assignments/${displayCase.relatedAssignmentId}`}>
+                    {displayCase.relatedAssignmentId && displayCase.relatedProjectId ? (
+                      <Link to={`/projects/${displayCase.relatedProjectId}?position=${displayCase.relatedAssignmentId}`}>
                         {displayCase.relatedAssignmentId}
                       </Link>
                     ) : (
-                      'No related assignment'
+                      'No related position'
                     )}
                   </dd>
                 </div>

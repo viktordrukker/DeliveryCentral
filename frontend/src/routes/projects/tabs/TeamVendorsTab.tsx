@@ -17,9 +17,9 @@ import { ProjectTeamAssignmentForm, ProjectTeamAssignmentFormValues } from '@/co
 import { formatDateShort, formatDate } from '@/lib/format-date';
 import type { ProjectDetails, AssignProjectTeamResponse } from '@/lib/api/project-registry';
 import { assignTeamToProject } from '@/lib/api/project-registry';
-import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
-import { listProjectPositions } from '@/lib/api/project-positions';
-import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
+import { listProjectPositions, type ProjectPosition } from '@/lib/api/project-positions';
+import { mapPositionToDirectoryItem } from '@/features/lean-migration/position-to-assignment-mapper';
+import { fetchPersonDirectoryById } from '@/lib/api/person-directory';
 import { fetchRolePlan, fetchRolePlanComparison, type RolePlanEntryDto, type RolePlanComparisonResult } from '@/lib/api/project-role-plan';
 import { fetchTeams, type TeamSummary } from '@/lib/api/teams';
 import { fetchProjectVendors, type ProjectVendorEngagementDto } from '@/lib/api/vendors';
@@ -40,9 +40,14 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
   const canManageProject = hasAnyRole(principal?.roles, PROJECT_CREATE_ROLES);
   const tokenState = useStoredApiToken();
 
-  const [teamAssignments, setTeamAssignments] = useState<AssignmentDirectoryItem[]>([]);
+  const [positions, setPositions] = useState<ProjectPosition[]>([]);
   const [teamAssignmentsLoading, setTeamAssignmentsLoading] = useState(true);
   const [teamAssignmentsError, setTeamAssignmentsError] = useState<string | null>(null);
+  // W1-10 — id → displayName cache for positions whose source DTO didn't
+  // carry an enriched `activePersonName` projection. Filled by a follow-up
+  // effect that fans out /org/people/:id reads; deduped per personId so the
+  // burst stays small even on large team lists.
+  const [personNames, setPersonNames] = useState<Map<string, string>>(new Map());
   const [rolePlanEntries, setRolePlanEntries] = useState<RolePlanEntryDto[]>([]);
   const [rolePlanComparison, setRolePlanComparison] = useState<RolePlanComparisonResult | null>(null);
 
@@ -68,14 +73,14 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
     setTeamAssignmentsLoading(true);
 
     void (async () => {
-      const [assignmentResponse, planEntries, vendors, dashResp] = await Promise.all([
-        listProjectPositions({ projectId }).then(mapListResponseToDirectory),
+      const [positionsResponse, planEntries, vendors, dashResp] = await Promise.all([
+        listProjectPositions({ projectId }),
         fetchRolePlan(projectId).catch(() => [] as RolePlanEntryDto[]),
         fetchProjectVendors(projectId).catch(() => [] as ProjectVendorEngagementDto[]),
         fetchProjectDashboard(projectId).catch(() => null),
       ]);
       if (!active) return;
-      setTeamAssignments(assignmentResponse.items);
+      setPositions(positionsResponse.positions);
       setRolePlanEntries(planEntries);
       setVendorEngagements(vendors);
       setDashboard(dashResp);
@@ -88,6 +93,30 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
 
     return () => { active = false; };
   }, [projectId]);
+
+  // W1-10 — resolve raw activePersonId → displayName when the DTO didn't
+  // carry an enriched `activePersonName` projection. Skips rows already
+  // resolved and those that already have a name from the BE.
+  useEffect(() => {
+    let active = true;
+    const unresolved = Array.from(
+      new Set(
+        positions
+          .filter((p) => p.activePersonId && !p.activePersonName && !personNames.has(p.activePersonId))
+          .map((p) => p.activePersonId as string),
+      ),
+    );
+    if (unresolved.length === 0) return;
+    void Promise.allSettled(unresolved.map((id) => fetchPersonDirectoryById(id))).then((results) => {
+      if (!active) return;
+      const next = new Map(personNames);
+      results.forEach((res, i) => {
+        if (res.status === 'fulfilled') next.set(unresolved[i], res.value.displayName);
+      });
+      setPersonNames(next);
+    });
+    return () => { active = false; };
+  }, [positions, personNames]);
 
   // Load teams
   useEffect(() => {
@@ -104,6 +133,12 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
     () => teams.filter((t) => t.orgUnit).map((t) => ({ label: t.name, meta: t.orgUnit ? t.orgUnit.name : 'No org unit', value: t.id })).sort((a, b) => a.label.localeCompare(b.label)),
     [teams],
   );
+
+  // StaffingSwimLaneGantt is shared with other surfaces and still consumes
+  // the legacy AssignmentDirectoryItem shape. Map on-demand so the table
+  // columns above stay bound to ProjectPosition without leaking the legacy
+  // shape upstream.
+  const ganttAssignments = useMemo(() => positions.map(mapPositionToDirectoryItem), [positions]);
 
   async function handleAssignTeam(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -135,8 +170,8 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
       setAssignTeamValues({ actorId: '', allocationPercent: '100', endDate: '', note: '', staffingRole: '', startDate: '', teamId: '' });
       setAssignTeamErrors({});
       await reload();
-      const fresh = await listProjectPositions({ projectId }).then(mapListResponseToDirectory);
-      setTeamAssignments(fresh.items);
+      const fresh = await listProjectPositions({ projectId });
+      setPositions(fresh.positions);
     } catch (error: unknown) {
       setActionError(error instanceof Error ? error.message : 'Failed to assign team.');
     } finally {
@@ -154,26 +189,43 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
         {teamAssignmentsLoading ? <LoadingState label="Loading assignments..." variant="skeleton" skeletonType="detail" /> : null}
         {teamAssignmentsError ? <ErrorState description={teamAssignmentsError} /> : null}
         {!teamAssignmentsLoading && !teamAssignmentsError ? (
-          teamAssignments.length === 0 ? (
-            <EmptyState description="No assignments found for this project." title="No team members" action={{ label: 'Create assignment', href: `/assignments/new?projectId=${projectId}` }} />
+          positions.length === 0 ? (
+            <EmptyState description="No assignments found for this project." title="No team members" action={{ label: 'Create position', href: `/staffing-desk/positions/new?projectId=${projectId}` }} />
           ) : (
             <Table
               variant="compact"
               columns={[
-                { key: 'person', title: 'Person', getValue: (a) => a.person.displayName, render: (a) => (
-                  <Link to={`/people/${a.person.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <Avatar name={a.person.displayName} size="xs" />
-                    <span>{a.person.displayName}</span>
-                  </Link>
-                ) },
-                { key: 'role', title: 'Role', getValue: (a) => a.staffingRole, render: (a) => a.staffingRole },
-                { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (a) => a.allocationPercent, render: (a) => <span style={NUM}><Pct value={a.allocationPercent} /></span> },
-                { key: 'from', title: 'From', getValue: (a) => a.startDate, render: (a) => formatDateShort(a.startDate) },
-                { key: 'to', title: 'To', getValue: (a) => a.endDate ?? '', render: (a) => a.endDate ? formatDateShort(a.endDate) : '\u2014' },
-                { key: 'status', title: 'Status', getValue: (a) => a.approvalState, render: (a) => a.approvalState },
-              ] as Column<AssignmentDirectoryItem>[]}
-              rows={teamAssignments}
-              getRowKey={(a) => a.id}
+                { key: 'person', title: 'Person', getValue: (p) => {
+                  if (p.activePersonName) return p.activePersonName;
+                  if (p.activePersonId) return personNames.get(p.activePersonId) ?? p.activePersonId;
+                  return '';
+                }, render: (p) => {
+                  if (!p.activePersonId) {
+                    return <span style={{ color: 'var(--color-text-muted)' }}>—</span>;
+                  }
+                  const resolved = personNames.get(p.activePersonId);
+                  const label = p.activePersonName ?? resolved ?? 'Resolving…';
+                  return (
+                    <Link to={`/people/${p.activePersonId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <Avatar name={label} size="xs" />
+                      <span>{label}</span>
+                    </Link>
+                  );
+                } },
+                { key: 'role', title: 'Role', getValue: (p) => p.role, render: (p) => p.role },
+                { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (p) => p.activeAllocationPercent ?? 0, render: (p) => <span style={NUM}><Pct value={p.activeAllocationPercent ?? 0} /></span> },
+                { key: 'from', title: 'From', getValue: (p) => p.activeValidFrom ?? p.startDate ?? '', render: (p) => {
+                  const value = p.activeValidFrom ?? p.startDate;
+                  return value ? formatDateShort(value) : '\u2014';
+                } },
+                { key: 'to', title: 'To', getValue: (p) => p.activeValidTo ?? p.endDate ?? '', render: (p) => {
+                  const value = p.activeValidTo ?? p.endDate;
+                  return value ? formatDateShort(value) : '\u2014';
+                } },
+                { key: 'status', title: 'Status', getValue: (p) => p.fillStatus, render: (p) => p.fillStatus },
+              ] as Column<ProjectPosition>[]}
+              rows={positions}
+              getRowKey={(p) => p.id}
             />
           )
         ) : null}
@@ -183,10 +235,10 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
       <div className="dashboard-main-grid">
         <SectionCard title="Staffing Timeline">
           {teamAssignmentsLoading ? <LoadingState label="Loading timeline..." variant="skeleton" skeletonType="detail" /> : (
-            teamAssignments.length === 0 ? (
-              <EmptyState description="No assignments with date ranges to visualize." title="No timeline data" action={{ label: 'Create assignment', href: `/assignments/new?projectId=${projectId}` }} />
+            ganttAssignments.length === 0 ? (
+              <EmptyState description="No assignments with date ranges to visualize." title="No timeline data" action={{ label: 'Create position', href: `/staffing-desk/positions/new?projectId=${projectId}` }} />
             ) : (
-              <StaffingSwimLaneGantt assignments={teamAssignments} />
+              <StaffingSwimLaneGantt assignments={ganttAssignments} />
             )
           )}
         </SectionCard>

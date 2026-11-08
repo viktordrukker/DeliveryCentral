@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { AdminTabbedShell } from '@/components/admin/AdminTabbedShell';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
-import { FormPageLayout } from '@/components/layout/FormPageLayout';
 import { SectionCard } from '@/components/common/SectionCard';
 import {
   type OrgConfigDto,
@@ -361,13 +361,13 @@ export function OrganizationConfigAdminContent(): JSX.Element {
 
 export function OrganizationConfigPage(): JSX.Element {
   return (
-    <FormPageLayout
-      testId="organization-config-page"
+    <AdminTabbedShell
       eyebrow="Admin"
-      title="Organization configuration"
       subtitle="Tune reporting cadence, thresholds, and governance without code deploys. Every change is audit-logged."
+      testId="organization-config-page"
+      title="Organization configuration"
     >
       <OrganizationConfigAdminContent />
-    </FormPageLayout>
+    </AdminTabbedShell>
   );
 }

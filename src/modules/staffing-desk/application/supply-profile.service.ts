@@ -79,18 +79,22 @@ export class SupplyProfileService {
       skillsByPerson.set(ps.personId, arr);
     }
 
-    // Get active assignments for allocation
-    const assignments = await this.prisma.projectAssignment.findMany({
+    // SoT PR 14b — canonical read from ProjectPosition.activePersonId.
+    const positions = await this.prisma.projectPosition.findMany({
       where: {
-        personId: { in: people.map((p) => p.id) },
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activePersonId: { in: people.map((p) => p.id) },
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
       },
-      select: { personId: true, allocationPercent: true },
+      select: { activePersonId: true, activeAllocationPercent: true },
     });
 
     const allocByPerson = new Map<string, number>();
-    for (const a of assignments) {
-      allocByPerson.set(a.personId, (allocByPerson.get(a.personId) ?? 0) + (a.allocationPercent?.toNumber() ?? 0));
+    for (const a of positions) {
+      if (!a.activePersonId) continue;
+      allocByPerson.set(
+        a.activePersonId,
+        (allocByPerson.get(a.activePersonId) ?? 0) + (a.activeAllocationPercent?.toNumber() ?? 0),
+      );
     }
 
     // Get pool names

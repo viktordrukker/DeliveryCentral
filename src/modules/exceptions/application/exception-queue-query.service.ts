@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, Optional } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Optional } from '@nestjs/common';
 
-import { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
+import { PROJECT_POSITION_REPOSITORY } from '@src/modules/project-positions/application/tokens';
+import { ProjectPosition } from '@src/modules/project-positions/domain/entities/project-position.entity';
+import { ProjectPositionRepositoryPort } from '@src/modules/project-positions/domain/repositories/project-position-repository.port';
 import { InMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
 import { AppConfig } from '@src/shared/config/app-config';
 
@@ -23,10 +24,13 @@ interface ExceptionQueueQuery {
   targetEntityType?: string;
 }
 
+const ACTIVE_FILL_STATUSES = ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] as const;
+
 @Injectable()
 export class ExceptionQueueQueryService {
   public constructor(
-    private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
+    @Inject(PROJECT_POSITION_REPOSITORY)
+    private readonly projectPositionRepository: ProjectPositionRepositoryPort,
     private readonly projectRepository: InMemoryProjectRepository,
     private readonly appConfig: AppConfig,
     @Optional() private readonly resolutionStore: ExceptionResolutionStore | null = null,
@@ -35,14 +39,23 @@ export class ExceptionQueueQueryService {
   public async getQueue(query: ExceptionQueueQuery = {}): Promise<ExceptionQueueResponseDto> {
     const asOf = this.resolveAsOf(query.asOf);
 
-    const [assignments, projects] = await Promise.all([
-      this.projectAssignmentRepository.findAll(),
+    // SoT PR 16a/1 — sourced from canonical ProjectPosition rows. We need
+    // both active fills (closure-conflict signals) and PROPOSED candidates
+    // (stale-approval signals).
+    const [activePositions, proposedPositions, projects] = await Promise.all([
+      this.projectPositionRepository.findByQuery({
+        fillStatuses: ACTIVE_FILL_STATUSES,
+        asOf,
+      }),
+      this.projectPositionRepository.findByQuery({
+        fillStatuses: ['PROPOSED'],
+      }),
       this.projectRepository.findAll(),
     ]);
 
     const items = [
-      ...(await this.buildProjectClosureConflicts(projects, assignments, asOf)),
-      ...this.buildStaleApprovals(assignments, asOf),
+      ...this.buildProjectClosureConflicts(projects, activePositions, asOf),
+      ...this.buildStaleApprovals(proposedPositions, asOf),
     ];
 
     const statusFilter = query.status ?? 'OPEN';
@@ -101,27 +114,27 @@ export class ExceptionQueueQueryService {
     return asOf;
   }
 
-  private async buildProjectClosureConflicts(
+  private buildProjectClosureConflicts(
     projects: Array<{ projectId: { value: string }; status: string; name: string }>,
-    assignments: ProjectAssignment[],
+    activePositions: ProjectPosition[],
     asOf: Date,
-  ): Promise<ExceptionQueueItemDto[]> {
+  ): ExceptionQueueItemDto[] {
     const items: ExceptionQueueItemDto[] = [];
 
     for (const project of projects.filter((item) => item.status === 'CLOSED')) {
-      const activeAssignments = assignments.filter(
-        (assignment) => assignment.projectId === project.projectId.value && assignment.isActiveAt(asOf),
+      const projectPositions = activePositions.filter(
+        (position) => position.projectId === project.projectId.value,
       );
 
-      if (activeAssignments.length === 0) {
+      if (projectPositions.length === 0) {
         continue;
       }
 
       items.push({
         category: 'PROJECT_CLOSURE_WITH_ACTIVE_ASSIGNMENTS',
         details: {
-          activeAssignmentCount: activeAssignments.length,
-          activeAssignmentIds: activeAssignments.map((assignment) => assignment.assignmentId.value),
+          activeAssignmentCount: projectPositions.length,
+          activeAssignmentIds: projectPositions.map((position) => position.positionId.value),
         },
         id: `project-closure-with-active-assignments:${project.projectId.value}`,
         observedAt: asOf.toISOString(),
@@ -129,7 +142,7 @@ export class ExceptionQueueQueryService {
         projectName: project.name,
         sourceContext: 'project',
         status: 'OPEN',
-        summary: `Closed project ${project.name} still has ${activeAssignments.length} active assignment${activeAssignments.length === 1 ? '' : 's'}.`,
+        summary: `Closed project ${project.name} still has ${projectPositions.length} active assignment${projectPositions.length === 1 ? '' : 's'}.`,
         targetEntityId: project.projectId.value,
         targetEntityType: 'PROJECT',
       });
@@ -139,32 +152,39 @@ export class ExceptionQueueQueryService {
   }
 
   private buildStaleApprovals(
-    assignments: ProjectAssignment[],
+    proposedPositions: ProjectPosition[],
     asOf: Date,
   ): ExceptionQueueItemDto[] {
     const thresholdMs = this.appConfig.exceptionsStaleApprovalDays * 24 * 60 * 60 * 1000;
 
-    return assignments
-      .filter((assignment) => assignment.status.value === 'PROPOSED')
-      .filter((assignment) => asOf.getTime() - assignment.requestedAt.getTime() >= thresholdMs)
-      .map((assignment) => ({
-        assignmentId: assignment.assignmentId.value,
-        category: 'STALE_ASSIGNMENT_APPROVAL',
-        details: {
-          requestedAt: assignment.requestedAt.toISOString(),
-          staleDays: Math.floor((asOf.getTime() - assignment.requestedAt.getTime()) / (24 * 60 * 60 * 1000)),
-        },
-        id: `stale-assignment-approval:${assignment.assignmentId.value}`,
-        observedAt: assignment.requestedAt.toISOString(),
-        personDisplayName: undefined,
-        personId: assignment.personId,
-        projectId: assignment.projectId,
-        projectName: undefined,
-        sourceContext: 'assignment',
-        status: 'OPEN',
-        summary: `Assignment approval request has been stale since ${assignment.requestedAt.toISOString()}.`,
-        targetEntityId: assignment.assignmentId.value,
-        targetEntityType: 'ASSIGNMENT',
-      }));
+    return proposedPositions
+      .filter((position) => {
+        // Use activeValidFrom as a proxy for "when this candidate was proposed".
+        // PROPOSED transitions set activeValidFrom (see ProjectPosition.transitionFill).
+        const requestedAt = position.activeValidFrom;
+        return requestedAt !== undefined && asOf.getTime() - requestedAt.getTime() >= thresholdMs;
+      })
+      .map((position) => {
+        const requestedAt = position.activeValidFrom!;
+        return {
+          assignmentId: position.positionId.value,
+          category: 'STALE_ASSIGNMENT_APPROVAL' as const,
+          details: {
+            requestedAt: requestedAt.toISOString(),
+            staleDays: Math.floor((asOf.getTime() - requestedAt.getTime()) / (24 * 60 * 60 * 1000)),
+          },
+          id: `stale-assignment-approval:${position.positionId.value}`,
+          observedAt: requestedAt.toISOString(),
+          personDisplayName: undefined,
+          personId: position.activePersonId ?? '',
+          projectId: position.projectId,
+          projectName: undefined,
+          sourceContext: 'assignment' as const,
+          status: 'OPEN' as const,
+          summary: `Assignment approval request has been stale since ${requestedAt.toISOString()}.`,
+          targetEntityId: position.positionId.value,
+          targetEntityType: 'ASSIGNMENT',
+        };
+      });
   }
 }

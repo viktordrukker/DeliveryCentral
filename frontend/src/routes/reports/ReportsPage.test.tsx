@@ -5,6 +5,25 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ReportsPage } from './ReportsPage';
 
+// W1-26 — ReportsPage filters tabs by role; tests expect all 7 tabs visible,
+// so mock with an admin principal who has access to every report sub-page.
+vi.mock('@/app/auth-context', () => ({
+  useAuth: () => ({
+    principal: { personId: 'admin-1', roles: ['admin'] },
+    isAuthenticated: true,
+    isLoading: false,
+  }),
+}));
+
+// W4-12 — Evidence tab wraps WorkEvidencePage in <FeatureGuard
+// feature="evidenceManagement">, mirroring the standalone /work-evidence
+// route. Tests for tab routing default the flag to ON; the disabled-state
+// behaviour gets its own test below.
+const evidenceManagementMock = { allowManualEntry: true, enabled: true, isLoading: false, showDiagnosticsInCoreDashboards: false };
+vi.mock('@/app/platform-settings-context', () => ({
+  useEvidenceManagement: () => evidenceManagementMock,
+}));
+
 // Stub the heavy embedded pages — we only test the shell composition, not
 // the inner page rendering (which is covered by each page's own tests).
 vi.mock('@/routes/exceptions/ExceptionsPage', () => ({
@@ -71,8 +90,17 @@ describe('ReportsPage — Phase E3 umbrella shell', () => {
   });
 
   it('renders the Evidence page under the Evidence tab', async () => {
+    evidenceManagementMock.enabled = true;
     renderReports(['/reports?section=evidence']);
     await waitFor(() => expect(screen.getByTestId('stub-evidence')).toBeInTheDocument());
+  });
+
+  it('W4-12 — Evidence tab gates on evidenceManagement.enabled (matches standalone /work-evidence guard)', async () => {
+    evidenceManagementMock.enabled = false;
+    renderReports(['/reports?section=evidence']);
+    await waitFor(() => expect(screen.getByTestId('feature-guard-disabled')).toBeInTheDocument());
+    expect(screen.queryByTestId('stub-evidence')).not.toBeInTheDocument();
+    evidenceManagementMock.enabled = true;
   });
 
   it('renders the Builder page under the Builder tab', async () => {

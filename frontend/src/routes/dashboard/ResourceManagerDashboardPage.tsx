@@ -25,6 +25,7 @@ import { ORG_DATA_CHANGED_EVENT } from '@/features/org-chart/useOrgChart';
 import { fetchProjectDirectory, ProjectDirectoryItem } from '@/lib/api/project-registry';
 import { ResourcePersonAllocationIndicator } from '@/lib/api/dashboard-resource-manager';
 import { Button } from '@/components/ds';
+import { PersonSelect } from '@/components/common/PersonSelect';
 
 import { RmActionItems } from './rm-sections/RmActionItems';
 import {
@@ -105,25 +106,15 @@ export function ResourceManagerDashboardPage(): JSX.Element {
           value={{ from: state.asOf.slice(0, 10), to: '' }}
           onChange={(r) => { if (r.from) state.setAsOf(`${r.from}T00:00:00.000Z`); }}
         />
-        <label className="field field--inline" style={{ fontSize: 12 }}>
-          <input
-            className="field__control"
-            list="rm-people-list-tb"
-            onChange={(event) => {
-              const match = state.people.find((p) => p.displayName === event.target.value);
-              if (match) handlePersonChange(match.id);
-            }}
-            placeholder="Resource manager..."
-            type="text"
-            defaultValue={state.people.find((p) => p.id === state.personId)?.displayName ?? ''}
-            key={state.personId}
-          />
-          <datalist id="rm-people-list-tb">
-            {state.people.map((person) => (
-              <option key={person.id} value={person.displayName} />
-            ))}
-          </datalist>
-        </label>
+        {/* W4-01 — switched from raw <input>+<datalist> to DS PersonSelect
+            (passes state.people through to preserve the resource_manager
+            role filter the dashboard hook applies). */}
+        <PersonSelect
+          label="Resource manager"
+          onChange={handlePersonChange}
+          people={state.people}
+          value={state.personId}
+        />
         <Button as={Link} variant="secondary" size="sm" to="/resource-pools">Resource pools</Button>
         <TipTrigger />
       </>
@@ -282,7 +273,7 @@ export function ResourceManagerDashboardPage(): JSX.Element {
                 <EmptyState
                   description="No active assignments found for managed resources. Try adjusting the date range."
                   title="No workload data"
-                  action={{ label: 'Create assignment', href: '/assignments/new' }}
+                  action={{ label: 'Open staffing desk', href: '/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE' }}
                 />
               )}
             </div>
@@ -316,7 +307,7 @@ export function ResourceManagerDashboardPage(): JSX.Element {
               </SectionCard>
             ) : (
               <SectionCard title="Demand Pipeline (Next 4 Weeks)" collapsible>
-                <EmptyState description="No future assignments are queued for the next 4 weeks." title="No upcoming demand" />
+                <EmptyState description="No future assignments are queued for the next 4 weeks." title="No upcoming demand" action={{ href: '/staffing-desk?view=board', label: 'Open staffing desk' }} />
               </SectionCard>
             )}
           </div>

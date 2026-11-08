@@ -1,0 +1,37 @@
+-- Rollback for 20260418_dm4_check_constraints. Drops each CHECK constraint
+-- added by the forward migration. Safe to run any time; CHECKs are metadata-only.
+
+ALTER TABLE "ProjectAssignment"            DROP CONSTRAINT IF EXISTS "ProjectAssignment_allocationPercent_range_check";
+ALTER TABLE "ProjectAssignment"            DROP CONSTRAINT IF EXISTS "ProjectAssignment_validFrom_before_validTo_check";
+ALTER TABLE "staffing_requests"            DROP CONSTRAINT IF EXISTS "staffing_requests_allocationPercent_range_check";
+ALTER TABLE "staffing_requests"            DROP CONSTRAINT IF EXISTS "staffing_requests_headcountRequired_positive_check";
+ALTER TABLE "staffing_requests"            DROP CONSTRAINT IF EXISTS "staffing_requests_headcountFulfilled_nonnegative_check";
+ALTER TABLE "staffing_requests"            DROP CONSTRAINT IF EXISTS "staffing_requests_startDate_before_endDate_check";
+ALTER TABLE "project_role_plans"           DROP CONSTRAINT IF EXISTS "project_role_plans_allocationPercent_range_check";
+ALTER TABLE "project_role_plans"           DROP CONSTRAINT IF EXISTS "project_role_plans_headcount_positive_check";
+ALTER TABLE "project_vendor_engagements"   DROP CONSTRAINT IF EXISTS "project_vendor_engagements_headcount_positive_check";
+ALTER TABLE "project_vendor_engagements"   DROP CONSTRAINT IF EXISTS "project_vendor_engagements_dateRange_check";
+ALTER TABLE "person_skills"                DROP CONSTRAINT IF EXISTS "person_skills_proficiency_range_check";
+ALTER TABLE "pulse_entries"                DROP CONSTRAINT IF EXISTS "pulse_entries_mood_range_check";
+ALTER TABLE "project_risks"                DROP CONSTRAINT IF EXISTS "project_risks_probability_range_check";
+ALTER TABLE "project_risks"                DROP CONSTRAINT IF EXISTS "project_risks_impact_range_check";
+ALTER TABLE "timesheet_entries"            DROP CONSTRAINT IF EXISTS "timesheet_entries_hours_nonnegative_check";
+ALTER TABLE "timesheet_weeks"              DROP CONSTRAINT IF EXISTS "timesheet_weeks_totalHours_nonnegative_check";
+ALTER TABLE "timesheet_weeks"              DROP CONSTRAINT IF EXISTS "timesheet_weeks_standardHours_nonnegative_check";
+ALTER TABLE "timesheet_weeks"              DROP CONSTRAINT IF EXISTS "timesheet_weeks_overtimeHours_nonnegative_check";
+ALTER TABLE "overtime_policies"            DROP CONSTRAINT IF EXISTS "overtime_policies_standardHoursPerWeek_nonnegative_check";
+ALTER TABLE "overtime_policies"            DROP CONSTRAINT IF EXISTS "overtime_policies_maxOvertimeHoursPerWeek_nonnegative_check";
+ALTER TABLE "overtime_policies"            DROP CONSTRAINT IF EXISTS "overtime_policies_effective_range_check";
+ALTER TABLE "overtime_exceptions"          DROP CONSTRAINT IF EXISTS "overtime_exceptions_maxOvertimeHoursPerWeek_nonnegative_check";
+ALTER TABLE "overtime_exceptions"          DROP CONSTRAINT IF EXISTS "overtime_exceptions_effective_range_check";
+ALTER TABLE "project_budgets"              DROP CONSTRAINT IF EXISTS "project_budgets_capexBudget_nonnegative_check";
+ALTER TABLE "project_budgets"              DROP CONSTRAINT IF EXISTS "project_budgets_opexBudget_nonnegative_check";
+ALTER TABLE "person_cost_rates"            DROP CONSTRAINT IF EXISTS "person_cost_rates_hourlyRate_positive_check";
+ALTER TABLE "Position"                     DROP CONSTRAINT IF EXISTS "Position_validFrom_before_validTo_check";
+ALTER TABLE "ReportingLine"                DROP CONSTRAINT IF EXISTS "ReportingLine_validFrom_before_validTo_check";
+ALTER TABLE "PersonOrgMembership"          DROP CONSTRAINT IF EXISTS "PersonOrgMembership_validFrom_before_validTo_check";
+ALTER TABLE "PersonResourcePoolMembership" DROP CONSTRAINT IF EXISTS "PersonResourcePoolMembership_validFrom_before_validTo_check";
+ALTER TABLE "OrgUnit"                      DROP CONSTRAINT IF EXISTS "OrgUnit_validFrom_before_validTo_check";
+ALTER TABLE "leave_requests"               DROP CONSTRAINT IF EXISTS "leave_requests_startDate_before_endDate_check";
+ALTER TABLE "period_locks"                 DROP CONSTRAINT IF EXISTS "period_locks_period_range_check";
+ALTER TABLE "Project"                      DROP CONSTRAINT IF EXISTS "Project_startsOn_before_endsOn_check";

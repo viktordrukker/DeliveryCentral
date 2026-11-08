@@ -26,6 +26,7 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 function makeRow(overrides: Partial<StaffingDeskRow> = {}): StaffingDeskRow {
   return {
     id: 'pos-1',
+    positionPublicId: null,
     kind: 'assignment',
     projectId: 'proj-1',
     projectName: 'Project Alpha',
@@ -99,8 +100,24 @@ describe('BulkReassignPanel (LEAN-P4-missing-1)', () => {
         onApplied={vi.fn()}
       />,
     );
-    expect(screen.getByTestId('bulk-reassign-row-pos-1')).toBeInTheDocument();
-    expect(screen.getByTestId('bulk-reassign-row-pos-2')).toBeInTheDocument();
+    expect(screen.getByTestId('bulk-reassign-row-0')).toBeInTheDocument();
+    expect(screen.getByTestId('bulk-reassign-row-1')).toBeInTheDocument();
+  });
+
+  it('does not leak raw position UUIDs in data-testid attributes', () => {
+    const { container } = render(
+      <BulkReassignPanel
+        items={[
+          makeRow({ id: '550e8400-e29b-41d4-a716-446655440000' }),
+          makeRow({ id: '550e8400-e29b-41d4-a716-446655440001' }),
+        ]}
+        onApplied={vi.fn()}
+      />,
+    );
+    const html = container.innerHTML;
+    expect(html).not.toMatch(/550e8400-e29b-41d4-a716/);
+    expect(screen.getByTestId('bulk-reassign-row-0')).toBeInTheDocument();
+    expect(screen.getByTestId('bulk-reassign-row-1')).toBeInTheDocument();
   });
 
   it('Reassign button stays disabled until at least one row is checked', async () => {
@@ -109,7 +126,7 @@ describe('BulkReassignPanel (LEAN-P4-missing-1)', () => {
       <BulkReassignPanel items={[makeRow({ id: 'pos-1' })]} onApplied={vi.fn()} />,
     );
     expect(screen.getByTestId('bulk-reassign-open')).toBeDisabled();
-    await user.click(screen.getByTestId('bulk-reassign-row-pos-1'));
+    await user.click(screen.getByTestId('bulk-reassign-row-0'));
     expect(screen.getByTestId('bulk-reassign-open')).not.toBeDisabled();
   });
 
@@ -135,8 +152,8 @@ describe('BulkReassignPanel (LEAN-P4-missing-1)', () => {
       />,
     );
 
-    await user.click(screen.getByTestId('bulk-reassign-row-pos-1'));
-    await user.click(screen.getByTestId('bulk-reassign-row-pos-2'));
+    await user.click(screen.getByTestId('bulk-reassign-row-0'));
+    await user.click(screen.getByTestId('bulk-reassign-row-1'));
     await user.click(screen.getByTestId('bulk-reassign-open'));
 
     // Wait for the directories to load inside the modal.
@@ -162,7 +179,7 @@ describe('BulkReassignPanel (LEAN-P4-missing-1)', () => {
     render(
       <BulkReassignPanel items={[makeRow({ id: 'pos-1' })]} onApplied={vi.fn()} />,
     );
-    await user.click(screen.getByTestId('bulk-reassign-row-pos-1'));
+    await user.click(screen.getByTestId('bulk-reassign-row-0'));
     await user.click(screen.getByTestId('bulk-reassign-open'));
     await waitFor(() =>
       expect(screen.getByTestId('bulk-reassign-person-select')).toBeInTheDocument(),
@@ -179,7 +196,7 @@ describe('BulkReassignPanel (LEAN-P4-missing-1)', () => {
     render(
       <BulkReassignPanel items={[makeRow({ id: 'pos-1' })]} onApplied={vi.fn()} />,
     );
-    await user.click(screen.getByTestId('bulk-reassign-row-pos-1'));
+    await user.click(screen.getByTestId('bulk-reassign-row-0'));
     await user.click(screen.getByTestId('bulk-reassign-open'));
     await waitFor(() =>
       expect(screen.getByTestId('bulk-reassign-project-select')).toBeInTheDocument(),
@@ -200,7 +217,7 @@ describe('BulkReassignPanel (LEAN-P4-missing-1)', () => {
     render(
       <BulkReassignPanel items={[makeRow({ id: 'pos-1' })]} onApplied={vi.fn()} />,
     );
-    await user.click(screen.getByTestId('bulk-reassign-row-pos-1'));
+    await user.click(screen.getByTestId('bulk-reassign-row-0'));
     await user.click(screen.getByTestId('bulk-reassign-open'));
     await waitFor(() =>
       expect(screen.getByTestId('bulk-reassign-person-select')).toBeInTheDocument(),

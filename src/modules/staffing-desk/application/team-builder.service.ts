@@ -54,15 +54,19 @@ export class TeamBuilderService {
       personMap.set(ps.skill.name, ps.proficiency);
     }
 
-    // Get current allocations
-    const assignments = await this.prisma.projectAssignment.findMany({
-      where: { status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
-      select: { personId: true, allocationPercent: true },
+    // SoT PR 14b — canonical read from ProjectPosition.activePersonId.
+    const positions = await this.prisma.projectPosition.findMany({
+      where: { fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] }, activePersonId: { not: null } },
+      select: { activePersonId: true, activeAllocationPercent: true },
     });
 
     const allocByPerson = new Map<string, number>();
-    for (const a of assignments) {
-      allocByPerson.set(a.personId, (allocByPerson.get(a.personId) ?? 0) + (a.allocationPercent?.toNumber() ?? 0));
+    for (const a of positions) {
+      if (!a.activePersonId) continue;
+      allocByPerson.set(
+        a.activePersonId,
+        (allocByPerson.get(a.activePersonId) ?? 0) + (a.activeAllocationPercent?.toNumber() ?? 0),
+      );
     }
 
     // Track who has been allocated across roles to avoid double-booking

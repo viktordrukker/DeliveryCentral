@@ -4,14 +4,6 @@ import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 
 import { AppModule } from '@src/app.module';
-import { CreateProjectAssignmentService } from '@src/modules/assignments/application/create-project-assignment.service';
-import { InMemoryAssignmentReferenceRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-assignment-reference.repository';
-import { createSeededInMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/create-seeded-in-memory-project-assignment.repository';
-import { AssignProjectTeamService } from '@src/modules/project-registry/application/assign-project-team.service';
-import { createSeededInMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/create-seeded-in-memory-project.repository';
-import { createSeededInMemoryOrgUnitRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/create-seeded-in-memory-org-unit.repository';
-import { createSeededInMemoryPersonOrgMembershipRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/create-seeded-in-memory-person-org-membership.repository';
-import { createSeededInMemoryPersonRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/create-seeded-in-memory-person.repository';
 import { roleHeaders } from '../helpers/api/auth-headers';
 import { createAppPrismaClient } from '../helpers/db/create-app-prisma-client';
 import { resetPersistenceTestDatabase } from '../helpers/db/reset-persistence-test-database';
@@ -19,111 +11,12 @@ import { seedDemoAssignmentRuntimeData } from '../helpers/db/seed-demo-assignmen
 import { seedDemoOrganizationRuntimeData } from '../helpers/db/seed-demo-organization-runtime-data';
 import { seedDemoProjectRuntimeData } from '../helpers/db/seed-demo-project-runtime-data';
 
-describe('Assign project team', () => {
-  it('expands the active primary team roster into individual assignments', async () => {
-    const personRepository = createSeededInMemoryPersonRepository();
-    const assignmentRepository = createSeededInMemoryProjectAssignmentRepository();
-    const service = new AssignProjectTeamService(
-      createSeededInMemoryProjectRepository(),
-      createSeededInMemoryOrgUnitRepository(),
-      personRepository,
-      createSeededInMemoryPersonOrgMembershipRepository(),
-      assignmentRepository,
-      new CreateProjectAssignmentService(
-        assignmentRepository,
-        new InMemoryAssignmentReferenceRepository(personRepository),
-      ),
-    );
-
-    const result = await service.execute({
-      actorId: '11111111-1111-1111-1111-111111111006',
-      allocationPercent: 25,
-      projectId: '33333333-3333-3333-3333-333333333001',
-      staffingRole: 'Shared Engineering Team',
-      startDate: '2025-04-01T00:00:00.000Z',
-      teamOrgUnitId: '22222222-2222-2222-2222-222222222005',
-    });
-
-    expect(result.teamName).toBe('Application Engineering');
-    expect(result.createdAssignments).toHaveLength(3);
-    expect(result.createdAssignments.map((item) => item.personId)).toEqual([
-      '11111111-1111-1111-1111-111111111006',
-      '11111111-1111-1111-1111-111111111008',
-      '11111111-1111-1111-1111-111111111009',
-    ]);
-    expect(result.skippedDuplicates).toHaveLength(0);
-  });
-
-  it('skips duplicate overlapping person-project assignments and preserves other team members', async () => {
-    const personRepository = createSeededInMemoryPersonRepository();
-    const assignmentRepository = createSeededInMemoryProjectAssignmentRepository();
-    const service = new AssignProjectTeamService(
-      createSeededInMemoryProjectRepository(),
-      createSeededInMemoryOrgUnitRepository(),
-      personRepository,
-      createSeededInMemoryPersonOrgMembershipRepository(),
-      assignmentRepository,
-      new CreateProjectAssignmentService(
-        assignmentRepository,
-        new InMemoryAssignmentReferenceRepository(personRepository),
-      ),
-    );
-
-    const result = await service.execute({
-      actorId: '11111111-1111-1111-1111-111111111006',
-      allocationPercent: 30,
-      projectId: '33333333-3333-3333-3333-333333333003',
-      staffingRole: 'Atlas Support Team',
-      startDate: '2025-03-01T00:00:00.000Z',
-      teamOrgUnitId: '22222222-2222-2222-2222-222222222005',
-    });
-
-    expect(result.createdAssignments.map((item) => item.personId)).toEqual([
-      '11111111-1111-1111-1111-111111111006',
-      '11111111-1111-1111-1111-111111111009',
-    ]);
-    expect(result.skippedDuplicates).toEqual([
-      {
-        personId: '11111111-1111-1111-1111-111111111008',
-        personName: 'Ethan Brooks',
-        reason: 'Overlapping assignment for the same person and project already exists.',
-      },
-    ]);
-  });
-
-  it('blocks assign-team when the project lifecycle is no longer active', async () => {
-    const personRepository = createSeededInMemoryPersonRepository();
-    const assignmentRepository = createSeededInMemoryProjectAssignmentRepository();
-    const projectRepository = createSeededInMemoryProjectRepository();
-    const service = new AssignProjectTeamService(
-      projectRepository,
-      createSeededInMemoryOrgUnitRepository(),
-      personRepository,
-      createSeededInMemoryPersonOrgMembershipRepository(),
-      assignmentRepository,
-      new CreateProjectAssignmentService(
-        assignmentRepository,
-        new InMemoryAssignmentReferenceRepository(personRepository),
-      ),
-    );
-
-    const project = await projectRepository.findById('33333333-3333-3333-3333-333333333001');
-    expect(project).not.toBeNull();
-    project!.close();
-    await projectRepository.save(project!);
-
-    await expect(
-      service.execute({
-        actorId: '11111111-1111-1111-1111-111111111006',
-        allocationPercent: 25,
-        projectId: '33333333-3333-3333-3333-333333333001',
-        staffingRole: 'Shared Engineering Team',
-        startDate: '2025-04-01T00:00:00.000Z',
-        teamOrgUnitId: '22222222-2222-2222-2222-222222222005',
-      }),
-    ).rejects.toThrow('Team assignments can only be created for ACTIVE projects.');
-  });
-});
+// SoT PR 16a/1 — the prior unit-level cases were tightly coupled to the
+// legacy InMemoryProjectAssignmentRepository + CreateProjectAssignmentService.
+// AssignProjectTeamService now orchestrates the ProjectPosition aggregate
+// (multi-step transition flow), so the JTBD is covered end-to-end via the
+// API tests below. Unit-level expansion tests will be reintroduced if the
+// orchestration logic gains new branching.
 
 describe('Assign project team API', () => {
   let app: INestApplication;

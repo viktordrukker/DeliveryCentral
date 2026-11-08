@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AdminIntegrationSummary, fetchAdminIntegrations } from '@/lib/api/admin';
 import {
   IntegrationSyncHistoryItem,
+  IntegrationTestConnectionResponse,
   M365ReconciliationReview,
   M365IntegrationStatus,
   RadiusReconciliationReview,
@@ -13,6 +14,10 @@ import {
   fetchAdminM365Status,
   fetchAdminRadiusReconciliation,
   fetchAdminRadiusStatus,
+  retryAdminM365Sync,
+  retryAdminRadiusSync,
+  testAdminM365Connection,
+  testAdminRadiusConnection,
   triggerAdminJiraSync,
   triggerAdminM365Sync,
   triggerAdminRadiusSync,
@@ -68,12 +73,16 @@ interface IntegrationAdminState {
   ) => void;
   statusByProvider: Partial<Record<IntegrationProviderKey, IntegrationStatusRecord>>;
   successMessage: string | null;
-  testConnectionResult: JiraTestConnectionResponse | null;
+  testConnectionResult: ProviderTestConnectionResult | null;
   triggerSync: (provider: IntegrationProviderKey) => Promise<void>;
   triggerRetrySync: (provider: IntegrationProviderKey) => Promise<void>;
   triggerResetSync: (provider: IntegrationProviderKey) => Promise<void>;
   triggerTestConnection: (provider: IntegrationProviderKey) => Promise<void>;
 }
+
+export type ProviderTestConnectionResult =
+  | (JiraTestConnectionResponse & { provider: 'jira' })
+  | (IntegrationTestConnectionResponse & { provider: 'm365' | 'radius' });
 
 export function useIntegrationAdmin(): IntegrationAdminState {
   const [integrations, setIntegrations] = useState<AdminIntegrationSummary[]>([]);
@@ -108,7 +117,7 @@ export function useIntegrationAdmin(): IntegrationAdminState {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [testConnectionResult, setTestConnectionResult] =
-    useState<JiraTestConnectionResponse | null>(null);
+    useState<ProviderTestConnectionResult | null>(null);
 
   const selectedIntegration = useMemo(
     () =>
@@ -278,20 +287,41 @@ export function useIntegrationAdmin(): IntegrationAdminState {
   }
 
   async function triggerRetrySync(provider: IntegrationProviderKey): Promise<void> {
-    if (provider !== 'jira') {
-      setError('Retry sync is only available for Jira in this release.');
-      return;
-    }
     setIsSyncing(true);
     setError(null);
     setSuccessMessage(null);
     try {
-      const result = await retryJiraSync();
-      setSuccessMessage(
-        `Jira retry sync completed. Created ${result.projectsCreated}, updated ${result.projectsUpdated}.`,
-      );
+      switch (provider) {
+        case 'jira': {
+          const result = await retryJiraSync();
+          setSuccessMessage(
+            `Jira retry sync completed. Created ${result.projectsCreated}, updated ${result.projectsUpdated}.`,
+          );
+          break;
+        }
+        case 'm365': {
+          const result = await retryAdminM365Sync();
+          setSuccessMessage(
+            `M365 retry sync completed. Created ${result.employeesCreated}, linked ${result.employeesLinked}.`,
+          );
+          break;
+        }
+        case 'radius': {
+          const result = await retryAdminRadiusSync();
+          setSuccessMessage(
+            `RADIUS retry sync completed. Imported ${result.accountsImported}, linked ${result.accountsLinked}.`,
+          );
+          break;
+        }
+      }
       await load();
       await loadIntegrationSyncHistory(provider);
+      if (provider === 'm365') {
+        await loadM365Reconciliation();
+      }
+      if (provider === 'radius') {
+        await loadRadiusReconciliation();
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Failed to retry integration sync.');
     } finally {
@@ -301,7 +331,9 @@ export function useIntegrationAdmin(): IntegrationAdminState {
 
   async function triggerResetSync(provider: IntegrationProviderKey): Promise<void> {
     if (provider !== 'jira') {
-      setError('Reset sync is only available for Jira in this release.');
+      setError(
+        `Reset sync state is only supported for Jira (the Jira adapter keeps an in-memory snapshot). ${provider.toUpperCase()} sync state is reset via reseed.`,
+      );
       return;
     }
     setError(null);
@@ -317,20 +349,37 @@ export function useIntegrationAdmin(): IntegrationAdminState {
   }
 
   async function triggerTestConnection(provider: IntegrationProviderKey): Promise<void> {
-    if (provider !== 'jira') {
-      setError('Test connection is only available for Jira in this release.');
-      return;
-    }
     setError(null);
     setSuccessMessage(null);
     setTestConnectionResult(null);
     try {
-      const result = await testJiraConnection();
+      let result: ProviderTestConnectionResult;
+      let displayName: string;
+      switch (provider) {
+        case 'jira': {
+          const r = await testJiraConnection();
+          result = { ...r, provider: 'jira' };
+          displayName = 'Jira';
+          break;
+        }
+        case 'm365': {
+          const r = await testAdminM365Connection();
+          result = { ...r, provider: 'm365' };
+          displayName = 'M365';
+          break;
+        }
+        case 'radius': {
+          const r = await testAdminRadiusConnection();
+          result = { ...r, provider: 'radius' };
+          displayName = 'RADIUS';
+          break;
+        }
+      }
       setTestConnectionResult(result);
       if (result.reachable) {
-        setSuccessMessage(`Jira reachable in ${result.latencyMs} ms.`);
+        setSuccessMessage(`${displayName} reachable in ${result.latencyMs} ms.`);
       } else {
-        setError(`Jira unreachable: ${result.errorMessage ?? 'unknown error'}.`);
+        setError(`${displayName} unreachable: ${result.errorMessage ?? 'unknown error'}.`);
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Failed to probe integration connection.');

@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { SectionCard } from '@/components/common/SectionCard';
-import { Pct, Timeline, type TimelineSegment } from '@/components/ds';
+import { Button, Pct, Timeline, type TimelineSegment } from '@/components/ds';
 import {
   fetchEmployeeDashboard,
   type EmployeeDashboardResponse,
@@ -153,6 +153,64 @@ export function OverviewTab(): JSX.Element {
             />
           </div>
         )}
+      </SectionCard>
+
+      <SectionCard title="Quick actions">
+        <div
+          data-testid="me-quick-actions"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: 'var(--space-2)',
+          }}
+        >
+          <Button
+            variant="secondary"
+            size="md"
+            type="button"
+            onClick={() => navigate('/me?tab=time')}
+            style={{ justifyContent: 'flex-start' }}
+          >
+            Log hours
+          </Button>
+          <Button
+            variant="secondary"
+            size="md"
+            type="button"
+            onClick={() => navigate('/me?tab=leave')}
+            style={{ justifyContent: 'flex-start' }}
+          >
+            Request leave
+          </Button>
+          <Button
+            variant="secondary"
+            size="md"
+            type="button"
+            onClick={() => navigate('/me?tab=skills')}
+            style={{ justifyContent: 'flex-start' }}
+          >
+            Edit skills
+          </Button>
+          <Button
+            variant="secondary"
+            size="md"
+            type="button"
+            onClick={() => navigate(principal?.personId ? `/people/${principal.personId}` : '/me')}
+            style={{ justifyContent: 'flex-start' }}
+            disabled={!principal?.personId}
+          >
+            View profile
+          </Button>
+          <Button
+            variant="secondary"
+            size="md"
+            type="button"
+            onClick={() => navigate('/settings/account')}
+            style={{ justifyContent: 'flex-start' }}
+          >
+            Account settings
+          </Button>
+        </div>
       </SectionCard>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--space-4)' }}>

@@ -176,7 +176,7 @@ export function TeamTab({ project, projectId, reload }: TeamTabProps): JSX.Eleme
         {teamAssignmentsError ? <ErrorState description={teamAssignmentsError} /> : null}
         {!teamAssignmentsLoading && !teamAssignmentsError ? (
           teamAssignments.length === 0 ? (
-            <EmptyState description="No assignments found for this project." title="No team members" action={{ label: 'Create assignment', href: `/assignments/new?projectId=${projectId}` }} />
+            <EmptyState description="No positions found for this project." title="No team members" action={{ label: 'Create position', href: `/projects/${projectId}?openCreatePosition=true` }} />
           ) : (
             <Table
               variant="compact"

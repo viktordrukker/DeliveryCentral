@@ -218,7 +218,7 @@ export function BenchInspector({ row, onClose, position }: BenchInspectorProps):
                 }}
               >
                 <Link
-                  to={`/projects/${s.projectId}/positions/${s.positionId}`}
+                  to={`/projects/${s.projectId}/positions/${s.positionPublicId ?? s.positionId}`}
                   style={{
                     flex: 1,
                     color: 'var(--color-accent)',
@@ -249,7 +249,7 @@ export function BenchInspector({ row, onClose, position }: BenchInspectorProps):
       </div>
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <Button as={Link} variant="secondary" size="sm" to={`/people/${row.personId}`}>
+        <Button as={Link} variant="secondary" size="sm" to={`/people/${row.personPublicId ?? row.personId}`}>
           Open profile
         </Button>
         <Button
@@ -266,7 +266,10 @@ export function BenchInspector({ row, onClose, position }: BenchInspectorProps):
             } catch {
               // sessionStorage may throw in private-browsing contexts; ignore.
             }
-            navigate(`/staffing-requests/new?candidatePersonId=${row.personId}`);
+            // SoT PR 8 — open the embedded CreatePositionDrawer on /staffing-desk
+            // (no full-page form). Bench has no project context, so we deep-link
+            // to the staffing desk and let the PM pick the project in the drawer.
+            navigate(`/staffing-desk?openCreatePosition=true&candidatePersonId=${row.personId}`);
           }}
         >
           Propose to position

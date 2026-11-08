@@ -1,10 +1,22 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import {
   PLATFORM_FLAGS,
   PlatformFlagsService,
 } from '@src/shared/config/platform-flags.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
+
+/**
+ * W4-07 — Flags whose rollout is owned by a separate (staged) path and
+ * must NEVER be flipped from the admin surface. The /admin/feature-flags
+ * UI also renders these as "Rollout-locked" chips; this BE list enforces
+ * the rule server-side so a direct PATCH to /api/admin/feature-flags/:id
+ * cannot bypass the controlled v2 rollout.
+ */
+export const ROLLOUT_LOCKED_FLAGS: ReadonlySet<string> = new Set<string>([
+  'dsRefresh',
+  'workspaceMe',
+]);
 
 /**
  * LEAN-P4d-2 — extracted from the inline controller body so the
@@ -55,6 +67,11 @@ export class FeatureFlagAdminService {
     )[id];
     if (!flag) {
       throw new NotFoundException(`Unknown feature flag: ${id}`);
+    }
+    if (ROLLOUT_LOCKED_FLAGS.has(id)) {
+      throw new ForbiddenException(
+        `Feature flag '${id}' is rollout-locked and cannot be toggled from the admin surface.`,
+      );
     }
     const previousValue = await this.flags.isEnabledByKey(flag.key, flag.default);
     // D-103-write-path — stamp actorId on every flip so the

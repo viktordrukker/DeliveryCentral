@@ -15,7 +15,12 @@ export class PrismaPersonDirectoryQueryRepository
   public constructor(private readonly prisma: PrismaService) {}
 
   public async findById(id: string, asOf: Date = new Date()): Promise<PersonDirectoryRecord | null> {
-    if (!PrismaPersonDirectoryQueryRepository.looksLikeUuid(id)) {
+    // W1-09 — accept either a raw UUID (legacy callers) or a `usr_...` publicId
+    // emitted by the publicId foundation (issue 564). Anything else short-circuits
+    // to null without hitting the database.
+    const isUuid = PrismaPersonDirectoryQueryRepository.looksLikeUuid(id);
+    const isPublicId = /^usr_[A-Za-z0-9]{6,32}$/.test(id);
+    if (!isUuid && !isPublicId) {
       return null;
     }
 
@@ -28,6 +33,7 @@ export class PrismaPersonDirectoryQueryRepository
                 code: true,
                 id: true,
                 name: true,
+                publicId: true,
               },
             },
           },
@@ -62,6 +68,7 @@ export class PrismaPersonDirectoryQueryRepository
               select: {
                 displayName: true,
                 id: true,
+                publicId: true,
               },
             },
           },
@@ -77,7 +84,7 @@ export class PrismaPersonDirectoryQueryRepository
       where: {
         archivedAt: null,
         deletedAt: null,
-        id,
+        ...(isUuid ? { id } : { publicId: id }),
       },
     });
 
@@ -155,6 +162,7 @@ export class PrismaPersonDirectoryQueryRepository
                 code: true,
                 id: true,
                 name: true,
+                publicId: true,
               },
             },
           },
@@ -189,6 +197,7 @@ export class PrismaPersonDirectoryQueryRepository
               select: {
                 displayName: true,
                 id: true,
+                publicId: true,
               },
             },
           },
@@ -303,27 +312,31 @@ export class PrismaPersonDirectoryQueryRepository
       return new Map();
     }
 
-    const assignments = await this.prisma.projectAssignment.findMany({
+    // SoT PR 14b — canonical read from ProjectPosition.activePersonId.
+    // BOOKED/ONBOARDING/ASSIGNED/ON_HOLD map to fillStatuses with an active fill.
+    const positions = await this.prisma.projectPosition.findMany({
       select: {
-        personId: true,
+        activePersonId: true,
       },
       where: {
         archivedAt: null,
-        personId: {
+        activePersonId: {
           in: personIds,
         },
-        status: {
+        fillStatus: {
           in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'],
         },
-        validFrom: {
+        activeValidFrom: {
           lte: asOf,
         },
-        OR: [{ validTo: null }, { validTo: { gte: asOf } }],
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: asOf } }],
       },
     });
 
-    return assignments.reduce<Map<string, number>>((counts, assignment) => {
-      counts.set(assignment.personId, (counts.get(assignment.personId) ?? 0) + 1);
+    return positions.reduce<Map<string, number>>((counts, position) => {
+      const pid = position.activePersonId;
+      if (!pid) return counts;
+      counts.set(pid, (counts.get(pid) ?? 0) + 1);
       return counts;
     }, new Map());
   }
@@ -345,6 +358,7 @@ export class PrismaPersonDirectoryQueryRepository
                 code: true,
                 id: true,
                 name: true,
+                publicId: true,
               },
             },
           },
@@ -379,6 +393,7 @@ export class PrismaPersonDirectoryQueryRepository
               select: {
                 displayName: true,
                 id: true,
+                publicId: true,
               },
             },
           },
@@ -415,9 +430,10 @@ export class PrismaPersonDirectoryQueryRepository
       grade: string | null;
       hiredAt: Date | null;
       id: string;
+      publicId: string | null;
       orgMemberships: Array<{
         isPrimary: boolean;
-        orgUnit: { code: string; id: string; name: string } | null;
+        orgUnit: { code: string; id: string; name: string; publicId: string | null } | null;
       }>;
       primaryEmail: string | null;
       resourcePoolMemberships: Array<{
@@ -426,7 +442,7 @@ export class PrismaPersonDirectoryQueryRepository
       role: string | null;
       terminatedAt: Date | null;
       subjectReportingLines: Array<{
-        manager: { displayName: string; id: string } | null;
+        manager: { displayName: string; id: string; publicId: string | null } | null;
         relationshipType: 'DOTTED_LINE' | 'FUNCTIONAL' | 'PROJECT' | 'SOLID_LINE';
       }>;
     },
@@ -446,6 +462,7 @@ export class PrismaPersonDirectoryQueryRepository
         ? {
             displayName: solidLine.manager.displayName,
             id: solidLine.manager.id,
+            publicId: solidLine.manager.publicId,
           }
         : null,
       currentOrgUnit: primaryMembership?.orgUnit
@@ -453,6 +470,7 @@ export class PrismaPersonDirectoryQueryRepository
             code: primaryMembership.orgUnit.code,
             id: primaryMembership.orgUnit.id,
             name: primaryMembership.orgUnit.name,
+            publicId: primaryMembership.orgUnit.publicId,
           }
         : null,
       displayName: person.displayName,
@@ -462,9 +480,11 @@ export class PrismaPersonDirectoryQueryRepository
         .map((line) => ({
           displayName: line.manager?.displayName ?? '',
           id: line.manager?.id ?? '',
+          publicId: line.manager?.publicId ?? null,
         }))
         .filter((line) => Boolean(line.id)),
       id: person.id,
+      publicId: person.publicId,
       hiredAt: person.hiredAt?.toISOString() ?? null,
       lifecycleStatus: person.employmentStatus,
       primaryEmail: person.primaryEmail,

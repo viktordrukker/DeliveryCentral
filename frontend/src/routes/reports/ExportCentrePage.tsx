@@ -90,7 +90,7 @@ export function ExportCentrePage(): JSX.Element {
   async function generateHeadcount(): Promise<void> {
     const res = await fetchPersonDirectory({ pageSize: 500 });
     const rows = res.items.map((p) => ({
-      'Active Assignments': p.currentAssignmentCount,
+      'Active Positions': p.currentAssignmentCount,
       Email: p.primaryEmail ?? '',
       Manager: p.currentLineManager?.displayName ?? '',
       Name: p.displayName,
@@ -186,8 +186,8 @@ export function ExportCentrePage(): JSX.Element {
         />
 
         <ReportCard
-          description="Downloads all current assignments with person, project, role, allocation %, status, and dates."
-          name="Assignment Overview"
+          description="Downloads all current positions with person, project, role, allocation %, status, and dates."
+          name="Position Overview"
           onGenerate={generateAssignmentOverview}
         />
 

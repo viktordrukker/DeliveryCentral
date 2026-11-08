@@ -7,17 +7,19 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { AbacPolicyRegistry } from './application/abac/abac-policy.registry';
 import { AuthenticatedPrincipalFactory } from './application/authenticated-principal.factory';
+import { CustomRoleService } from './application/custom-role.service';
 import { DemoModeGuard } from './application/demo-mode.guard';
 import { RbacGuard } from './application/rbac.guard';
 import { ReadAccessResolverService } from './application/read-access-resolver.service';
 import { ResponsibilityResolverService } from './application/responsibility-resolver.service';
 import { ResponsibilityRulesAdminService } from './application/responsibility-rules-admin.service';
+import { CustomRoleController } from './presentation/custom-role.controller';
 import { ResponsibilityRulesAdminController } from './presentation/responsibility-rules-admin.controller';
 
 @Global()
 @Module({
   imports: [RolePresetsModule],
-  controllers: [ResponsibilityRulesAdminController],
+  controllers: [ResponsibilityRulesAdminController, CustomRoleController],
   providers: [
     AuthenticatedPrincipalFactory,
     AbacPolicyRegistry,
@@ -45,6 +47,11 @@ import { ResponsibilityRulesAdminController } from './presentation/responsibilit
         new ResponsibilityRulesAdminService(prisma, auditLogger),
       inject: [PrismaService, AuditLoggerService],
     },
+    {
+      provide: CustomRoleService,
+      useFactory: (prisma: PrismaService) => new CustomRoleService(prisma),
+      inject: [PrismaService],
+    },
   ],
   exports: [
     AuthenticatedPrincipalFactory,
@@ -52,6 +59,7 @@ import { ResponsibilityRulesAdminController } from './presentation/responsibilit
     ReadAccessResolverService,
     ResponsibilityResolverService,
     ResponsibilityRulesAdminService,
+    CustomRoleService,
   ],
 })
 export class IdentityAccessModule {}

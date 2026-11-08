@@ -5,6 +5,10 @@ import { PositionFillStatusValue } from '../../domain/value-objects/position-fil
 
 export class ProjectPositionResponseDto {
   @ApiProperty() id!: string;
+  // W1-11 — opaque tenant-scoped identifier (`pos_…`) preferred for URLs and
+  // deep-links. Null for rows that pre-date the W1-07 backfill until the
+  // wizard / admin tool re-runs the backfill on legacy data.
+  @ApiProperty({ nullable: true }) publicId!: string | null;
   @ApiProperty() projectId!: string;
   @ApiProperty() role!: string;
   @ApiProperty() requiredAllocationPercent!: number;
@@ -22,6 +26,7 @@ export class ProjectPositionResponseDto {
   public static from(position: ProjectPosition): ProjectPositionResponseDto {
     return {
       id: position.positionId.value,
+      publicId: position.publicId ?? null,
       projectId: position.projectId,
       role: position.role,
       requiredAllocationPercent: position.requiredAllocationPercent,

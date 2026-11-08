@@ -203,31 +203,34 @@ export class NudgeSweeperService implements OnModuleInit, OnModuleDestroy {
   /* ── Queries ─────────────────────────────────────────────────── */
 
   private async findStaleProposals(cutoff: Date): Promise<ProposalCandidate[]> {
-    // OPEN slates proposed before the cutoff with NO candidates whose
-    // decision has moved off PENDING. The candidates filter ensures
-    // we don't nudge if someone has already engaged with the slate.
-    // F-55 / 20c-11 — Prisma already infers the row type from the `select`
-    // clause; the `as unknown as Array<...>` cast was a no-op.
-    const rows = await this.prisma.staffingRequestProposalSlate.findMany({
+    // SoT PR 16b — slates were dropped along with the legacy staffing
+    // tables. Stale-proposal nudges now surface from
+    // `ProjectPositionCandidate`: pending candidate rows on positions
+    // still in PROPOSED state past the SLA cutoff are the lean
+    // equivalent of an unacknowledged slate. The nudge recipient
+    // remains the candidate's `createdByPersonId` (the proposer).
+    const rows = await this.prisma.projectPositionCandidate.findMany({
       where: {
-        status: 'OPEN',
-        proposedAt: { lt: cutoff },
-        candidates: { none: { decision: { not: 'PENDING' } } },
+        decision: 'PENDING',
+        createdAt: { lt: cutoff },
+        position: { fillStatus: { in: ['PROPOSED', 'OPEN'] } },
       },
       select: {
         id: true,
-        staffingRequestId: true,
-        proposedAt: true,
-        proposedByPersonId: true,
+        positionId: true,
+        createdAt: true,
+        createdByPersonId: true,
       },
     });
-    return rows.map((r) => ({
-      slateId: r.id,
-      staffingRequestId: r.staffingRequestId,
-      proposedAt: r.proposedAt,
-      proposedByPersonId: r.proposedByPersonId,
-      recipientPersonIds: [r.proposedByPersonId],
-    }));
+    return rows
+      .filter((r): r is typeof r & { createdByPersonId: string } => r.createdByPersonId !== null)
+      .map((r) => ({
+        slateId: r.id,
+        staffingRequestId: r.positionId,
+        proposedAt: r.createdAt,
+        proposedByPersonId: r.createdByPersonId,
+        recipientPersonIds: [r.createdByPersonId],
+      }));
   }
 
   private async findStaleTimesheets(weekStartCutoff: Date): Promise<TimesheetCandidate[]> {

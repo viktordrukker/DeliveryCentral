@@ -17,6 +17,7 @@ describe('UnifiedApprovalQueueService — timesheet source', () => {
   function buildStub(opts: {
     timesheets?: Array<{
       id: string;
+      publicId?: string | null;
       personId: string;
       weekStart: Date;
       submittedAt: Date | null;
@@ -47,6 +48,7 @@ describe('UnifiedApprovalQueueService — timesheet source', () => {
         timesheets: [
           {
             id: 'tw-1',
+            publicId: 'tsh_etn1',
             personId: 'p-1',
             weekStart: new Date('2026-05-25T00:00:00Z'),
             submittedAt: new Date('2026-05-26T10:00:00Z'),
@@ -64,7 +66,9 @@ describe('UnifiedApprovalQueueService — timesheet source', () => {
     expect(item.source).toBe('timesheet');
     expect(item.title).toBe('Timesheet week of 2026-05-25');
     expect(item.submittedBy).toEqual({ personId: 'p-1', displayName: 'Ethan Brooks' });
-    expect(item.href).toBe('/approvals/tw-1?source=timesheet');
+    // W1-12 — href now uses publicId when present.
+    expect(item.targetPublicId).toBe('tsh_etn1');
+    expect(item.href).toBe('/approvals/tsh_etn1?source=timesheet');
     expect(item.submittedAt).toBe('2026-05-26T10:00:00.000Z');
     expect(item.meta).toMatchObject({ weekStart: '2026-05-25', totalHours: 40 });
   });
@@ -121,6 +125,7 @@ describe('UnifiedApprovalQueueService — timesheet source', () => {
 describe('UnifiedApprovalQueueService — leave source', () => {
   interface LeaveRow {
     id: string;
+    publicId?: string | null;
     type: 'ANNUAL' | 'SICK' | 'OTHER';
     startDate: Date;
     endDate: Date;
@@ -145,6 +150,7 @@ describe('UnifiedApprovalQueueService — leave source', () => {
       buildStub([
         {
           id: 'lr-1',
+          publicId: 'lvr_annual1',
           type: 'ANNUAL',
           startDate: new Date('2026-06-15T00:00:00Z'),
           endDate: new Date('2026-06-20T00:00:00Z'),
@@ -160,7 +166,9 @@ describe('UnifiedApprovalQueueService — leave source', () => {
     expect(item.source).toBe('leave');
     expect(item.title).toBe('Leave: ANNUAL 2026-06-15…2026-06-20');
     expect(item.submittedBy).toEqual({ personId: 'p-1', displayName: 'Ethan Brooks' });
-    expect(item.href).toBe('/leave-requests/lr-1');
+    // W1-12 — leave items route via publicId when available.
+    expect(item.targetPublicId).toBe('lvr_annual1');
+    expect(item.href).toBe('/leave-requests/lvr_annual1');
     expect(item.submittedAt).toBe('2026-06-01T09:00:00.000Z');
     expect(item.meta).toMatchObject({ type: 'ANNUAL' });
   });

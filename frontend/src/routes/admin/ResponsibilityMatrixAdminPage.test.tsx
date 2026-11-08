@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 
+import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import {
   archiveResponsibilityRule,
   createResponsibilityRule,
@@ -23,6 +24,17 @@ vi.mock('@/lib/api/responsibility-rules', async (importOriginal) => {
   };
 });
 
+// W1-15 — Target column now resolves UUID → displayName via the people
+// directory; tests stub it so the read-back column falls back to the raw
+// UUID (no mapping) and existing assertions continue to pass.
+vi.mock('@/lib/api/person-directory', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api/person-directory')>();
+  return {
+    ...actual,
+    fetchPersonDirectory: vi.fn(),
+  };
+});
+
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
@@ -31,6 +43,7 @@ const mockedList = vi.mocked(listResponsibilityRules);
 const mockedCreate = vi.mocked(createResponsibilityRule);
 const mockedUpdate = vi.mocked(updateResponsibilityRule);
 const mockedArchive = vi.mocked(archiveResponsibilityRule);
+const mockedFetchPeople = vi.mocked(fetchPersonDirectory);
 
 const seededRule: ResponsibilityRule = {
   id: '00000000-0000-4000-8000-0000000d0401',
@@ -82,6 +95,8 @@ describe('ResponsibilityMatrixAdminPage', () => {
     mockedCreate.mockReset();
     mockedUpdate.mockReset();
     mockedArchive.mockReset();
+    mockedFetchPeople.mockReset();
+    mockedFetchPeople.mockResolvedValue({ items: [], page: 1, pageSize: 0, total: 0 });
   });
 
   async function waitForTable(): Promise<HTMLTableElement> {

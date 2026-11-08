@@ -157,7 +157,9 @@ export class TimesheetsService {
     return {
       id: entry.id,
       projectId: entry.projectId,
-      assignmentId: entry.assignmentId ?? undefined,
+      // LEAN PR 16a/2 — source from `positionId` (canonical). The DTO field
+      // name stays `assignmentId` for FE compatibility until PR 17 renames.
+      assignmentId: entry.positionId ?? undefined,
       date: toDateStr(entry.date),
       hours: Number(entry.hours),
       capex: entry.capex,
@@ -548,7 +550,9 @@ export class TimesheetsService {
       entries: Array<{
         id: string;
         projectId: string;
-        assignmentId: string | null;
+        // LEAN PR 16a/2 — `positionId` replaces the legacy `assignmentId`
+        // FK. PR 16b drops the assignmentId column entirely.
+        positionId: string | null;
         date: Date;
         hours: Prisma.Decimal;
         capex: boolean;
@@ -576,7 +580,9 @@ export class TimesheetsService {
       entries: week.entries.map((e) => ({
         id: e.id,
         projectId: e.projectId,
-        assignmentId: e.assignmentId ?? undefined,
+        // LEAN PR 16a/2 — source from `positionId`. DTO field name stays
+        // `assignmentId` for FE compatibility.
+        assignmentId: e.positionId ?? undefined,
         date: toDateStr(e.date),
         hours: Number(e.hours),
         capex: e.capex,

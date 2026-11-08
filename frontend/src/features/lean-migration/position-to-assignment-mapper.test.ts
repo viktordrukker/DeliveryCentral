@@ -84,4 +84,27 @@ describe('position-to-assignment-mapper', () => {
     expect(response.allocationPercent).toBe(80);
     expect(response.version).toBe(1);
   });
+
+  // W1-10 — prefers enriched displayName projections (activePersonName /
+  // projectName / projectCode) when the DTO carries them. Falls back to the
+  // raw id so callers can detect unresolved rows and back-fill via the
+  // person-directory.
+  it('uses activePersonName / projectName when DTO is enriched', () => {
+    const item = mapPositionToDirectoryItem(
+      buildPosition({
+        activePersonName: 'Ada Lovelace',
+        projectName: 'Atlas ERP',
+        projectCode: 'PRJ-102',
+      }),
+    );
+    expect(item.person).toEqual({ id: 'per-1', displayName: 'Ada Lovelace' });
+    expect(item.project).toEqual({ id: 'prj-1', displayName: 'Atlas ERP' });
+  });
+
+  it('prefers projectCode when projectName is missing on the DTO', () => {
+    const item = mapPositionToDirectoryItem(
+      buildPosition({ projectCode: 'PRJ-102' }),
+    );
+    expect(item.project.displayName).toBe('PRJ-102');
+  });
 });

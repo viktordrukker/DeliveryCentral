@@ -9,7 +9,6 @@ import { IdempotencyInterceptor } from './shared/http/idempotency.interceptor';
 import { AdminModule } from './modules/admin/admin.module';
 import { AdminFeatureFlagsModule } from './modules/admin-feature-flags/admin-feature-flags.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { AssignmentWorkloadModule } from './modules/assignment-workload/assignment-workload.module';
 import { AuditObservabilityModule } from './modules/audit-observability/audit-observability.module';
 import { CaseManagementModule } from './modules/case-management/case-management.module';
 import { CustomizationMetadataModule } from './modules/customization-metadata/customization-metadata.module';
@@ -41,7 +40,6 @@ import { ApplyPlannerScenarioModule } from './modules/planner-scenarios/apply-pl
 import { PlannerScenariosModule } from './modules/planner-scenarios/planner-scenarios.module';
 import { ProjectPositionsModule } from './modules/project-positions/project-positions.module';
 import { StaffingDeskModule } from './modules/staffing-desk/staffing-desk.module';
-import { StaffingRequestsModule } from './modules/staffing-requests/staffing-requests.module';
 import { LeaveRequestsModule } from './modules/leave-requests/leave-requests.module';
 import { OvertimeModule } from './modules/overtime/overtime.module';
 import { WorkloadModule } from './modules/workload/workload.module';
@@ -88,7 +86,6 @@ import { PublicIdModule } from './infrastructure/public-id';
     AuthModule,
     OrganizationOrgChartModule,
     ProjectRegistryModule,
-    AssignmentWorkloadModule,
     TimeWorkEvidenceModule,
     TimesheetsModule,
     WorkloadModule,
@@ -106,7 +103,6 @@ import { PublicIdModule } from './infrastructure/public-id';
     PlannerScenariosModule,
     ProjectPositionsModule,
     StaffingDeskModule,
-    StaffingRequestsModule,
     LeaveRequestsModule,
     OvertimeModule,
     ReportsModule,

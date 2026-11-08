@@ -1,0 +1,7 @@
+{
+  "totalGzipBytes": 1475297,
+  "totalRawBytes": 5818985,
+  "lastUpdated": "2026-06-06",
+  "tolerancePercent": 15,
+  "notes": "Pre-redesign baseline measured against frontend/dist/assets/*.js after `npm --prefix frontend run build` on main @ b1ab1ae. Refresh with `npm run bundle-size:baseline` when an intentional bundle increase is approved."
+}

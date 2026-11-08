@@ -56,13 +56,15 @@ describe('V2-A.1 — ProjectDetailPage 3-tab consolidation', () => {
     expect(src).toMatch(/badges={titleBadges}/);
   });
 
-  it('B7: gated per-tab Plan actions + signal threading; Manage-positions uses the list route', () => {
+  it('B7: gated per-tab Plan actions + signal threading; W4-05 Manage-positions opens inline Drawer', () => {
     // Plan-tab-only, dsRefresh-gated header actions
     expect(src).toMatch(/dsRefreshEnabled && activeTab === 'plan' \?/);
     expect(src).toMatch(/setMilestoneAddSignal\(\(n\) => n \+ 1\)/);
     expect(src).toMatch(/setCrAddSignal\(\(n\) => n \+ 1\)/);
-    // Manage positions → existing list route, NOT the non-existent /positions/new
-    expect(src).toMatch(/to={`\/projects\/\$\{id\}\/positions`}/);
+    // W4-05 — Manage positions is now an inline Drawer trigger, not a Link
+    expect(src).toMatch(/setManagePositionsOpen\(true\)/);
+    expect(src).toMatch(/<ManagePositionsDrawer/);
+    // Sanity — the now-removed /positions/new pseudo-route still must not appear
     expect(src).not.toMatch(/positions\/new/);
     // signals passed into PlanTab
     expect(src).toMatch(/milestoneAddSignal={milestoneAddSignal}/);
@@ -84,16 +86,9 @@ describe('V2-A.1 — PlanTab aggregator', () => {
     expect(src).toMatch(/data-testid="plan-tab"/);
   });
 
-  it('B5: renders a Plan KPI strip from staffing-summary + milestones', () => {
-    expect(src).toMatch(/data-testid="plan-kpi-strip"/);
-    // sourced from the legacy role-plan staffing summary (lean positions shelved)
-    expect(src).toMatch(/fetchStaffingSummary\(projectId\)/);
-    expect(src).toMatch(/fetchMilestones\(projectId\)/);
-    // filled-rate donut + roles/gap/milestone tiles
-    expect(src).toMatch(/<Donut/);
-    expect(src).toMatch(/Roles planned/);
-    expect(src).toMatch(/Open gap/);
-    expect(src).toMatch(/Milestones hit/);
+  it('SoT PR 5: Plan tab does NOT render an internal KPI strip (KPI strip is Pulse-only)', () => {
+    expect(src).not.toMatch(/data-testid="plan-kpi-strip"/);
+    expect(src).not.toMatch(/fetchStaffingSummary/);
   });
 
   it('B7: forwards the header add-signals into the milestone + change-request sub-tabs', () => {

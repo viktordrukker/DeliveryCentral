@@ -52,6 +52,9 @@ const ALLOWED_FILES = new Set([
   // SR-only table — accessibility primitive that intentionally renders raw <table>
   // for WCAG 1.3.1 chart equivalents; cannot use DS Table chrome.
   path.join(ROOT, 'frontend', 'src', 'components', 'charts', 'SrOnlyTable.tsx'),
+  // KPI-strip tiles use native <button> with the kpi-strip__item class for proper
+  // semantics (W5-01). DS Button styles would clobber the flex-column tile layout.
+  path.join(ROOT, 'frontend', 'src', 'components', 'staffing-desk', 'StaffingDeskKpiStrip.tsx'),
 ]);
 const ALLOWED_DIR_PREFIXES = [
   path.join(ROOT, 'frontend', 'src', 'components', 'ds'),

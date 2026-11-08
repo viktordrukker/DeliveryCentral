@@ -3,7 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
+import { fetchUnifiedApprovals } from '@/lib/api/approvals-unified';
 import {
+  fetchPositionHistory,
   getPositionCandidates,
   getProjectPositionById,
   transitionProjectPositionFill,
@@ -25,6 +27,11 @@ vi.mock('@/lib/api/project-positions', () => ({
   getPositionCandidates: vi.fn(),
   transitionProjectPositionFill: vi.fn(),
   listProjectPositions: vi.fn().mockResolvedValue({ positions: [], total: 0 }),
+  fetchPositionHistory: vi.fn().mockResolvedValue({ positionId: 'pos-1', history: [] }),
+}));
+
+vi.mock('@/lib/api/approvals-unified', () => ({
+  fetchUnifiedApprovals: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 100 }),
 }));
 
 vi.mock('@/lib/api/staffing-candidates', () => ({
@@ -40,6 +47,8 @@ const mockedCandidates = vi.mocked(getPositionCandidates);
 const mockedTransition = vi.mocked(transitionProjectPositionFill);
 const mockedAutoMatch = vi.mocked(autoMatchPosition);
 const mockedFlag = vi.mocked(isFeatureEnabled);
+const mockedHistory = vi.mocked(fetchPositionHistory);
+const mockedApprovals = vi.mocked(fetchUnifiedApprovals);
 
 const OPEN_POSITION = {
   id: 'pos-1',
@@ -94,6 +103,11 @@ describe('ProjectPositionDetailPage (NEW-LGL-7)', () => {
     mockedTransition.mockReset();
     mockedAutoMatch.mockReset();
     mockedFlag.mockReset();
+    mockedHistory.mockReset();
+    mockedApprovals.mockReset();
+    // Defaults — empty history + no pending approvals; tests can override.
+    mockedHistory.mockResolvedValue({ positionId: 'pos-1', history: [] });
+    mockedApprovals.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 100 });
     // Default: dsRefresh OFF — auto-match button hidden. Per-test overrides enable it.
     mockedFlag.mockReturnValue(false);
   });
@@ -155,6 +169,10 @@ describe('ProjectPositionDetailPage.AutoMatch (LEAN-P4-missing-3)', () => {
     mockedTransition.mockReset();
     mockedAutoMatch.mockReset();
     mockedFlag.mockReset();
+    mockedHistory.mockReset();
+    mockedApprovals.mockReset();
+    mockedHistory.mockResolvedValue({ positionId: 'pos-1', history: [] });
+    mockedApprovals.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 100 });
   });
 
   it('hides the Auto-match button when dsRefresh is OFF', async () => {
@@ -243,5 +261,112 @@ describe('ProjectPositionDetailPage.AutoMatch (LEAN-P4-missing-3)', () => {
     await screen.findByText('Position not seeking a fill');
 
     expect(screen.queryByTestId('auto-match-button')).not.toBeInTheDocument();
+  });
+});
+
+describe('ProjectPositionDetailPage history + approvals (W2-04)', () => {
+  beforeEach(() => {
+    mockedGet.mockReset();
+    mockedCandidates.mockReset();
+    mockedTransition.mockReset();
+    mockedAutoMatch.mockReset();
+    mockedFlag.mockReset();
+    mockedHistory.mockReset();
+    mockedApprovals.mockReset();
+    mockedFlag.mockReturnValue(false);
+  });
+
+  it('renders the lifecycle history timeline when history rows are present', async () => {
+    mockedGet.mockResolvedValue(OPEN_POSITION);
+    mockedCandidates.mockResolvedValue(CANDIDATES);
+    mockedApprovals.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 100 });
+    mockedHistory.mockResolvedValue({
+      positionId: 'pos-1',
+      history: [
+        {
+          id: 'h-1',
+          positionId: 'pos-1',
+          changeType: 'OPENED',
+          previousStatus: 'DRAFT',
+          newStatus: 'OPEN',
+          changedByPersonId: 'rm-1',
+          occurredAt: '2026-06-01T10:00:00Z',
+        },
+      ],
+    });
+
+    renderAt();
+    await screen.findByText('Ada Lovelace');
+
+    expect(mockedHistory).toHaveBeenCalledWith('pos-1');
+    // Timeline mounts (collapsible card body renders the empty wrapper at minimum).
+    expect(await screen.findByTestId('assignment-history-timeline')).toBeInTheDocument();
+  });
+
+  it('renders pending approvals when fetchUnifiedApprovals returns a matching item', async () => {
+    mockedGet.mockResolvedValue(OPEN_POSITION);
+    mockedCandidates.mockResolvedValue(CANDIDATES);
+    mockedHistory.mockResolvedValue({ positionId: 'pos-1', history: [] });
+    mockedApprovals.mockResolvedValue({
+      items: [
+        {
+          id: 'apv-1',
+          source: 'position-proposal',
+          title: 'Propose Ada for Senior Engineer',
+          submittedBy: { personId: 'rm-1', displayName: 'Sophia Kim' },
+          submittedAt: '2026-06-05T12:00:00Z',
+          slaDueAt: '2026-06-06T12:00:00Z',
+          slaBreachedAt: null,
+          slaStage: 'due-soon',
+          ageHours: 6,
+          href: '/projects/prj-1/positions/pos-1',
+          targetPublicId: 'pos_apolloSeniorEng',
+          meta: { positionId: 'pos-1' },
+        },
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 100,
+    });
+
+    renderAt();
+    await screen.findByText('Ada Lovelace');
+
+    expect(await screen.findByText('Propose Ada for Senior Engineer')).toBeInTheDocument();
+    expect(screen.getByText('Sophia Kim')).toBeInTheDocument();
+    expect(screen.getByText('Due soon')).toBeInTheDocument();
+  });
+
+  it('hides approvals from other positions even when the unified queue returns them', async () => {
+    mockedGet.mockResolvedValue(OPEN_POSITION);
+    mockedCandidates.mockResolvedValue(CANDIDATES);
+    mockedHistory.mockResolvedValue({ positionId: 'pos-1', history: [] });
+    mockedApprovals.mockResolvedValue({
+      items: [
+        {
+          id: 'apv-other',
+          source: 'position-proposal',
+          title: 'Propose Bo for Other Role',
+          submittedBy: null,
+          submittedAt: '2026-06-05T12:00:00Z',
+          slaDueAt: null,
+          slaBreachedAt: null,
+          slaStage: null,
+          ageHours: 1,
+          href: '/projects/prj-other/positions/pos-other',
+          targetPublicId: 'pos_otherRole',
+          meta: { positionId: 'pos-other' },
+        },
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 100,
+    });
+
+    renderAt();
+    await screen.findByText('Ada Lovelace');
+
+    expect(screen.queryByText('Propose Bo for Other Role')).not.toBeInTheDocument();
+    expect(await screen.findByText('No pending approvals')).toBeInTheDocument();
   });
 });

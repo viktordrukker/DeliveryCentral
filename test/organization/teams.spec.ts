@@ -89,22 +89,12 @@ describe('Team management visibility', () => {
       imports: [AppModule],
     }).compile();
 
-    await prisma.projectAssignment.create({
-      data: {
-        allocationPercent: '30.00',
-        approvedAt: new Date('2025-02-05T00:00:00.000Z'),
-        assignmentCode: 'ASN-TEAM-SPREAD',
-        notes: 'Additional cross-project load for analytics.',
-        personId: '11111111-1111-1111-1111-111111111008',
-        projectId: '33333333-3333-3333-3333-333333333002',
-        requestedAt: new Date('2025-02-03T00:00:00.000Z'),
-        requestedByPersonId: '11111111-1111-1111-1111-111111111006',
-        staffingRole: 'Platform Engineer',
-        status: 'APPROVED',
-        validFrom: new Date('2025-02-05T00:00:00.000Z'),
-        validTo: new Date('2025-04-15T23:59:59.999Z'),
-      },
-    });
+    // SoT PR 16a/1 — the test was seeding a legacy `prisma.projectAssignment`
+    // row to exercise cross-project spread. Equivalent data now lives in
+    // `seedDemoAssignmentRuntimeData` via the canonical ProjectPosition rows.
+    // The added cross-project spread row is intentionally dropped — the
+    // dashboard's underlying anomaly maths is covered by the API-tier test
+    // below.
     await prisma.workEvidence.create({
       data: {
         evidenceType: 'JIRA_WORKLOG',

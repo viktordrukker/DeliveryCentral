@@ -19,6 +19,7 @@ export class ProjectPositionPrismaMapper {
   public static toDomain(row: PrismaProjectPosition): ProjectPosition {
     return ProjectPosition.create(
       {
+        publicId: row.publicId ?? undefined,
         projectId: row.projectId,
         role: row.role,
         requiredAllocationPercent: Number(row.requiredAllocationPercent),

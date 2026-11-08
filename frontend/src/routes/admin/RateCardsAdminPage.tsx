@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { ClientSelect } from '@/components/common/ClientSelect';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -569,9 +570,12 @@ export function RateCardsAdminPage(): JSX.Element {
           />
         </FormField>
         {creatingCard ? (
-          <FormField label="Client id (UUID, optional)" hint="Empty → tenant default; the resolver checks client cards first.">
-            <Input value={cardForm.clientId} onChange={(e) => setCardForm({ ...cardForm, clientId: e.target.value })} />
-          </FormField>
+          <ClientSelect
+            label="Client (optional)"
+            placeholder="Tenant default — applies to every client"
+            value={cardForm.clientId}
+            onChange={(value) => setCardForm({ ...cardForm, clientId: value })}
+          />
         ) : null}
         <FormField label="Valid from">
           <Input

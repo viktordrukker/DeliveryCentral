@@ -19,6 +19,16 @@ export interface ApprovalQueuePersonSummaryDto {
 
 export interface ApprovalQueueItemDto {
   id: string;
+  /**
+   * W1-12 — opaque tenant-scoped publicId of the target aggregate. Set when
+   * the source row carries a publicId (ProjectPosition, LeaveRequest,
+   * CaseRecord, TimesheetWeek) or when a meaningful parent aggregate does
+   * (Project publicId for budget/activation, Skill publicId for skill-review).
+   * `null` for legacy rows that pre-date the publicId backfill. The page row
+   * "Open" link prefers this when composing the detail URL so raw UUIDs do
+   * not leak into the browser bar.
+   */
+  targetPublicId: string | null;
   source: ApprovalQueueSource;
   title: string;
   submittedBy: ApprovalQueuePersonSummaryDto | null;

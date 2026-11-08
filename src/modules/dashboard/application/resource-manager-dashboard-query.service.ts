@@ -1,10 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { PersonDirectoryQueryService } from '@src/modules/organization/application/person-directory-query.service';
 import { TeamQueryService } from '@src/modules/organization/application/team-query.service';
+import { loadAllPositionAssignmentViews } from '@src/shared/persistence/position-assignment-view';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
-
-import { InMemoryStaffingRequestService } from '@src/modules/staffing-requests/infrastructure/services/in-memory-staffing-request.service';
 
 import { ResourceManagerDashboardResponseDto } from './contracts/resource-manager-dashboard.dto';
 
@@ -13,13 +11,13 @@ interface ResourceManagerDashboardQuery {
   personId: string;
 }
 
+// SoT PR 14b — RM dashboard sources active fills + open demand from the
+// canonical `ProjectPosition` aggregate.
 @Injectable()
 export class ResourceManagerDashboardQueryService {
   public constructor(
     private readonly personDirectoryQueryService: PersonDirectoryQueryService,
     private readonly teamQueryService: TeamQueryService,
-    private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
-    private readonly staffingRequestService: InMemoryStaffingRequestService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -50,7 +48,7 @@ export class ResourceManagerDashboardQueryService {
       return orgUnit?.managerPersonId === query.personId;
     });
 
-    const assignments = await this.projectAssignmentRepository.findAll();
+    const assignments = await loadAllPositionAssignmentViews(this.prisma);
 
     // Precompute Maps for O(1) lookups
     const peopleById = new Map(allPeople.map((p) => [p.id, p]));
@@ -81,7 +79,7 @@ export class ResourceManagerDashboardQueryService {
             (assignment) => assignment.isActiveAt(asOf),
           );
           const totalAllocationPercent = currentAssignments.reduce(
-            (sum, assignment) => sum + (assignment.allocationPercent?.value ?? 0),
+            (sum, assignment) => sum + assignment.allocationPercent,
             0,
           );
 
@@ -113,8 +111,10 @@ export class ResourceManagerDashboardQueryService {
       .filter((assignment) => assignment.validFrom > asOf && managedPersonIds.has(assignment.personId))
       .sort((left, right) => left.validFrom.getTime() - right.validFrom.getTime())
       .map((assignment) => ({
-        approvalState: assignment.status.value,
-        assignmentId: assignment.assignmentId.value,
+        approvalState: assignment.status,
+        // SoT PR 14b — `assignmentId` field name kept for FE consumers; value
+        // is now the canonical ProjectPosition id.
+        assignmentId: assignment.id,
         personDisplayName: peopleById.get(assignment.personId)?.displayName ?? assignment.personId,
         personId: assignment.personId,
         projectId: assignment.projectId,
@@ -125,11 +125,11 @@ export class ResourceManagerDashboardQueryService {
     const pendingAssignmentApprovals = assignments
       .filter(
         (assignment) =>
-          assignment.status.value === 'PROPOSED' && managedPersonIds.has(assignment.personId),
+          assignment.status === 'PROPOSED' && managedPersonIds.has(assignment.personId),
       )
       .sort((left, right) => right.requestedAt.getTime() - left.requestedAt.getTime())
       .map((assignment) => ({
-        assignmentId: assignment.assignmentId.value,
+        assignmentId: assignment.id,
         personDisplayName: peopleById.get(assignment.personId)?.displayName ?? assignment.personId,
         personId: assignment.personId,
         projectId: assignment.projectId,
@@ -186,30 +186,44 @@ export class ResourceManagerDashboardQueryService {
         };
       });
 
-    // Incoming staffing requests (OPEN), ordered by priority weight then startDate
+    // SoT PR 14b — incoming open demand sourced from canonical ProjectPosition
+    // rows (fillStatus OPEN), ordered by priority weight then startDate. Each
+    // position is one headcount: required=1, fulfilled=1 when activePersonId
+    // is set (a PROPOSED slate already has a candidate), otherwise 0.
     const PRIORITY_WEIGHT: Record<string, number> = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
-    const allOpenRequests = await this.staffingRequestService.list({ status: 'OPEN' });
-    const incomingRequests = allOpenRequests
+    const openPositionRows = await this.prisma.projectPosition.findMany({
+      where: { fillStatus: 'OPEN' },
+      select: {
+        id: true,
+        projectId: true,
+        role: true,
+        priority: true,
+        startDate: true,
+        summary: true,
+        activePersonId: true,
+      },
+    });
+    const incomingRequests = openPositionRows
       .sort((a, b) => {
         const pw = (PRIORITY_WEIGHT[a.priority] ?? 9) - (PRIORITY_WEIGHT[b.priority] ?? 9);
         if (pw !== 0) return pw;
-        return a.startDate.localeCompare(b.startDate);
+        return a.startDate.getTime() - b.startDate.getTime();
       })
       .map((r) => ({
-        headcountFulfilled: r.headcountFulfilled,
-        headcountRequired: r.headcountRequired,
+        headcountFulfilled: r.activePersonId !== null ? 1 : 0,
+        headcountRequired: 1,
         id: r.id,
         priority: r.priority,
         projectId: r.projectId,
         role: r.role,
-        startDate: r.startDate,
+        startDate: r.startDate.toISOString().slice(0, 10),
         summary: r.summary ?? null,
       }));
 
     return {
       allocationIndicators,
       asOf: asOf.toISOString(),
-      dataSources: ['person_directory', 'teams', 'assignments', 'staffing_requests'],
+      dataSources: ['person_directory', 'teams', 'project_positions'],
       incomingRequests,
       futureAssignmentPipeline,
       pendingAssignmentApprovals,

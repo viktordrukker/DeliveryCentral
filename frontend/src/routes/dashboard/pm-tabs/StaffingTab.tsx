@@ -8,7 +8,7 @@ import { formatChangeType } from '@/lib/labels';
 import { formatDate } from '@/lib/format-date';
 import { Table, type Column } from '@/components/ds';
 import type {
-  OpenStaffingRequestSummary,
+  OpenPositionSummary,
   ProjectDashboardAttentionItem,
   RecentlyChangedAssignmentItem,
 } from '@/lib/api/dashboard-project-manager';
@@ -24,11 +24,11 @@ export interface OverallocatedPerson {
 interface Props {
   overallocated: OverallocatedPerson[];
   projectsWithStaffingGaps: ProjectDashboardAttentionItem[];
-  openRequests: OpenStaffingRequestSummary[];
+  openRequests: OpenPositionSummary[];
   recentChanges: RecentlyChangedAssignmentItem[];
   onPersonClick: (personId: string) => void;
   onProjectClick: (projectId: string) => void;
-  onRequestClick: (requestId: string) => void;
+  onRequestClick: (request: OpenPositionSummary) => void;
 }
 
 interface IssueRow {
@@ -79,7 +79,7 @@ export function PmStaffingTab({
       category: 'Staffing Gap',
       entity: g.projectName,
       detail: `${g.reason} · ${g.detail}`,
-      linkTo: `/assignments/new?projectId=${g.projectId}`,
+      linkTo: `/projects/${g.projectId}?openCreatePosition=true`,
       linkLabel: 'Fill',
       clickTarget: g.projectId,
     })),
@@ -103,13 +103,13 @@ export function PmStaffingTab({
     ) },
   ];
 
-  const requestColumns: Column<OpenStaffingRequestSummary>[] = [
+  const requestColumns: Column<OpenPositionSummary>[] = [
     { key: 'role', title: 'Role', getValue: (r) => r.role, render: (r) => <span style={{ fontWeight: 500 }}>{r.role}</span> },
     { key: 'priority', title: 'Priority', width: 80, getValue: (r) => r.priority, render: (r) => <PriorityBadge priority={r.priority} /> },
     { key: 'start', title: 'Start', width: 90, getValue: (r) => r.startDate, render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{r.startDate}</span> },
     { key: 'hc', title: 'Headcount', align: 'right', getValue: (r) => r.headcountFulfilled, render: (r) => <span style={NUM}>{r.headcountFulfilled}/{r.headcountRequired}</span> },
     { key: 'go', title: '', width: 40, render: (r) => (
-      <Link to={`/staffing-requests/${r.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>
+      <Link to={`/projects/${r.projectId}?position=${r.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>
         View
       </Link>
     ) },
@@ -143,24 +143,24 @@ export function PmStaffingTab({
       )}
 
       {openRequests.length > 0 && (
-        <SectionCard title={`Open Staffing Requests (${openRequests.length})`} collapsible>
+        <SectionCard title={`Open Positions (${openRequests.length})`} collapsible>
           <Table
             variant="compact"
             columns={requestColumns}
             rows={openRequests}
             getRowKey={(r) => r.id}
-            onRowClick={(r) => onRequestClick(r.id)}
+            onRowClick={(r) => onRequestClick(r)}
           />
           <div style={{ marginTop: 8 }}>
-            <Link style={{ fontSize: 11, color: 'var(--color-text-muted)' }} to="/staffing-requests">
-              View all staffing requests
+            <Link style={{ fontSize: 11, color: 'var(--color-text-muted)' }} to="/staffing-desk">
+              View all positions
             </Link>
           </div>
         </SectionCard>
       )}
 
       <SectionCard
-        title="Recently Changed Assignments"
+        title="Recently Changed Positions"
         collapsible
         chartExport={{
           headers: ['Project', 'Person', 'Change', 'Date'],

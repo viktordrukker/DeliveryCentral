@@ -6,12 +6,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { ImpersonationProvider } from '@/app/impersonation-context';
 import { AdminPanelPage } from './AdminPanelPage';
 
-// LEAN-P4d-1 — under dsRefresh the admin panel uses the 5-tab Phase 18
-// Admin Control Surface grammar. Each tab inline-mounts a sub-page's
-// AdminContent helper rather than deep-linking. We mock the sub-page
-// content modules to keep this test focused on the tab shell + URL
-// persistence contract; per-sub-page rendering is covered by the
-// sub-pages' own tests.
+// V2 SoT PR 12 — Admin Settings DS canvas conformance (page-admin-setup.jsx).
+// 5 tabs (Platform / Roles & RBAC / Integrations / Dictionaries / Monitoring)
+// over a 1fr/280px split with right rail.
 vi.mock('./SettingsPage', () => ({
   SettingsAdminContent: () => <div data-testid="mock-settings-content">Settings</div>,
   SettingsPage: () => <div />,
@@ -40,6 +37,9 @@ vi.mock('./DictionariesPage', () => ({
   DictionariesAdminContent: () => <div data-testid="mock-dictionaries-content">Dictionaries</div>,
   DictionariesPage: () => <div />,
 }));
+vi.mock('./AdminRightRail', () => ({
+  AdminRightRail: () => <div data-testid="mock-right-rail">Right rail</div>,
+}));
 
 vi.mock('@/lib/api/admin', () => ({
   fetchAdminConfig: vi.fn(async () => ({
@@ -54,14 +54,6 @@ vi.mock('@/lib/api/admin', () => ({
   updateAdminAccount: vi.fn(),
 }));
 
-vi.mock('@/lib/feature-flags', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/feature-flags')>();
-  return {
-    ...actual,
-    isFeatureEnabled: (id: string) => id === 'dsRefresh',
-  };
-});
-
 function renderTabbed(initialEntries: string[] = ['/admin']): void {
   render(
     <MemoryRouter initialEntries={initialEntries}>
@@ -72,26 +64,31 @@ function renderTabbed(initialEntries: string[] = ['/admin']): void {
   );
 }
 
-describe('AdminPanelPage — LEAN-P4d-1 5-tab Admin Control Surface', () => {
-  it('renders the tabbed shell instead of the sidebar when dsRefresh is ON', async () => {
+describe('AdminPanelPage — V2 SoT PR 12 (DS canvas 5-tab Admin Control Surface)', () => {
+  it('renders the DS tab shell', async () => {
     renderTabbed();
     await waitFor(() => expect(screen.getByTestId('admin-tabbed')).toBeInTheDocument());
     expect(screen.queryByText('Sections')).not.toBeInTheDocument();
   });
 
-  it('exposes the 5 Phase 18 tabs in the PageHeader strip', async () => {
+  it('renders the right rail on every tab', async () => {
     renderTabbed();
-    await waitFor(() => expect(screen.getByTestId('admin-tabbed')).toBeInTheDocument());
-    expect(screen.getByRole('tab', { name: /General/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Integrations/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Governance/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /People Config/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Feature Flags/i })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('mock-right-rail')).toBeInTheDocument());
   });
 
-  it('mounts SettingsAdminContent inline under the General tab (default)', async () => {
+  it('exposes the 5 DS canvas tabs in the PageHeader strip', async () => {
     renderTabbed();
-    await waitFor(() => expect(screen.getByTestId('admin-tab-general')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('admin-tabbed')).toBeInTheDocument());
+    expect(screen.getByRole('tab', { name: /Platform/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Roles & RBAC/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Integrations/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Dictionaries/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Monitoring/i })).toBeInTheDocument();
+  });
+
+  it('mounts SettingsAdminContent inline under the Platform tab (default)', async () => {
+    renderTabbed();
+    await waitFor(() => expect(screen.getByTestId('admin-tab-platform')).toBeInTheDocument());
     expect(screen.getByTestId('mock-settings-content')).toBeInTheDocument();
   });
 
@@ -106,46 +103,46 @@ describe('AdminPanelPage — LEAN-P4d-1 5-tab Admin Control Surface', () => {
     expect(screen.getByTestId('mock-integrations-content')).toBeInTheDocument();
   });
 
-  it('switching to Governance mounts RolePermissions + BusinessAudit inline', async () => {
+  it('switching to Roles & RBAC mounts RolePermissions + BusinessAudit inline', async () => {
     const user = userEvent.setup();
     renderTabbed();
     await waitFor(() => expect(screen.getByTestId('admin-tabbed')).toBeInTheDocument());
-    await user.click(screen.getByRole('tab', { name: /Governance/i }));
+    await user.click(screen.getByRole('tab', { name: /Roles & RBAC/i }));
     await waitFor(() =>
-      expect(screen.getByTestId('admin-tab-governance')).toBeInTheDocument(),
+      expect(screen.getByTestId('admin-tab-roles')).toBeInTheDocument(),
     );
     expect(screen.getByTestId('mock-role-permissions-content')).toBeInTheDocument();
     expect(screen.getByTestId('mock-business-audit-content')).toBeInTheDocument();
   });
 
-  it('switching to People Config mounts Dictionaries + OrgConfig inline', async () => {
+  it('switching to Dictionaries mounts Dictionaries + OrgConfig inline', async () => {
     const user = userEvent.setup();
     renderTabbed();
     await waitFor(() => expect(screen.getByTestId('admin-tabbed')).toBeInTheDocument());
-    await user.click(screen.getByRole('tab', { name: /People Config/i }));
+    await user.click(screen.getByRole('tab', { name: /Dictionaries/i }));
     await waitFor(() =>
-      expect(screen.getByTestId('admin-tab-people-config')).toBeInTheDocument(),
+      expect(screen.getByTestId('admin-tab-dicts')).toBeInTheDocument(),
     );
     expect(screen.getByTestId('mock-dictionaries-content')).toBeInTheDocument();
     expect(screen.getByTestId('mock-org-config-content')).toBeInTheDocument();
   });
 
-  it('switching to Feature Flags mounts FeatureFlagsAdminContent inline', async () => {
+  it('switching to Monitoring mounts FeatureFlagsAdminContent inline', async () => {
     const user = userEvent.setup();
     renderTabbed();
     await waitFor(() => expect(screen.getByTestId('admin-tabbed')).toBeInTheDocument());
-    await user.click(screen.getByRole('tab', { name: /Feature Flags/i }));
+    await user.click(screen.getByRole('tab', { name: /Monitoring/i }));
     await waitFor(() =>
-      expect(screen.getByTestId('admin-tab-feature-flags')).toBeInTheDocument(),
+      expect(screen.getByTestId('admin-tab-monitor')).toBeInTheDocument(),
     );
     expect(screen.getByTestId('mock-feature-flags-content')).toBeInTheDocument();
   });
 
   it('respects ?tab=… in the URL on initial render', async () => {
-    renderTabbed(['/admin?tab=feature-flags']);
+    renderTabbed(['/admin?tab=monitor']);
     await waitFor(() =>
-      expect(screen.getByTestId('admin-tab-feature-flags')).toBeInTheDocument(),
+      expect(screen.getByTestId('admin-tab-monitor')).toBeInTheDocument(),
     );
-    expect(screen.getByRole('heading', { level: 2, name: /Feature Flags/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: /Monitoring/i })).toBeInTheDocument();
   });
 });

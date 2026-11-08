@@ -2,10 +2,10 @@ import { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 import { ExceptionQueueQueryService } from '@src/modules/exceptions/application/exception-queue-query.service';
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
-import { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
-import { AllocationPercent } from '@src/modules/assignments/domain/value-objects/allocation-percent';
-import { AssignmentStatus } from '@src/modules/assignments/domain/value-objects/assignment-status';
+import { PROJECT_POSITION_REPOSITORY } from '@src/modules/project-positions/application/tokens';
+import { ProjectPosition } from '@src/modules/project-positions/domain/entities/project-position.entity';
+import { ProjectPositionRepositoryPort } from '@src/modules/project-positions/domain/repositories/project-position-repository.port';
+import { PositionFillStatus } from '@src/modules/project-positions/domain/value-objects/position-fill-status';
 import { InMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
 import { Project } from '@src/modules/project-registry/domain/entities/project.entity';
 import { PersonId } from '@src/modules/organization/domain/value-objects/person-id';
@@ -22,7 +22,7 @@ describe('Exception queue', () => {
   let prisma: PrismaClient;
   let exceptionQueueQueryService: ExceptionQueueQueryService;
   let projectRepository: InMemoryProjectRepository;
-  let projectAssignmentRepository: InMemoryProjectAssignmentRepository;
+  let projectPositionRepository: ProjectPositionRepositoryPort;
 
   beforeAll(async () => {
     prisma = createAppPrismaClient();
@@ -35,7 +35,7 @@ describe('Exception queue', () => {
     app = await createApiTestApp();
     exceptionQueueQueryService = app.get(ExceptionQueueQueryService);
     projectRepository = app.get(InMemoryProjectRepository);
-    projectAssignmentRepository = app.get(InMemoryProjectAssignmentRepository);
+    projectPositionRepository = app.get(PROJECT_POSITION_REPOSITORY);
 
     await seedExceptionScenarios();
   });
@@ -122,28 +122,41 @@ describe('Exception queue', () => {
     );
     await projectRepository.save(closedProject);
 
-    await projectAssignmentRepository.save(
-      ProjectAssignment.create({
-        allocationPercent: AllocationPercent.from(40),
-        approvedAt: new Date('2025-02-10T00:00:00.000Z'),
-        personId: '11111111-1111-1111-1111-111111111011',
+    // SoT PR 16a/1 — exception signals now read from canonical ProjectPosition
+    // rows. We seed:
+    //   1. A BOOKED position on a CLOSED project — drives the
+    //      PROJECT_CLOSURE_WITH_ACTIVE_ASSIGNMENTS signal.
+    //   2. A PROPOSED position with an old activeValidFrom — drives the
+    //      STALE_ASSIGNMENT_APPROVAL signal.
+    await projectPositionRepository.save(
+      ProjectPosition.create({
         projectId: closedProject.projectId.value,
-        requestedAt: new Date('2025-02-08T00:00:00.000Z'),
-        staffingRole: 'Consultant',
-        status: AssignmentStatus.booked(),
-        validFrom: new Date('2025-02-10T00:00:00.000Z'),
+        role: 'Consultant',
+        requiredAllocationPercent: 40,
+        startDate: new Date('2025-02-10T00:00:00.000Z'),
+        endDate: new Date('2026-02-10T00:00:00.000Z'),
+        fillStatus: PositionFillStatus.booked(),
+        activePersonId: '11111111-1111-1111-1111-111111111011',
+        activeAllocationPercent: 40,
+        activeValidFrom: new Date('2025-02-10T00:00:00.000Z'),
+        requestedByPersonId: '11111111-1111-1111-1111-111111111005',
+        createdByPersonId: '11111111-1111-1111-1111-111111111005',
       }),
     );
 
-    await projectAssignmentRepository.save(
-      ProjectAssignment.create({
-        allocationPercent: AllocationPercent.from(30),
-        personId: '11111111-1111-1111-1111-111111111009',
+    await projectPositionRepository.save(
+      ProjectPosition.create({
         projectId: closedProject.projectId.value,
-        requestedAt: new Date('2025-02-20T00:00:00.000Z'),
-        staffingRole: 'Reviewer',
-        status: AssignmentStatus.created(),
-        validFrom: new Date('2025-02-20T00:00:00.000Z'),
+        role: 'Reviewer',
+        requiredAllocationPercent: 30,
+        startDate: new Date('2025-02-20T00:00:00.000Z'),
+        endDate: new Date('2026-02-20T00:00:00.000Z'),
+        fillStatus: PositionFillStatus.proposed(),
+        activePersonId: '11111111-1111-1111-1111-111111111009',
+        activeAllocationPercent: 30,
+        activeValidFrom: new Date('2025-02-20T00:00:00.000Z'),
+        requestedByPersonId: '11111111-1111-1111-1111-111111111005',
+        createdByPersonId: '11111111-1111-1111-1111-111111111005',
       }),
     );
   }

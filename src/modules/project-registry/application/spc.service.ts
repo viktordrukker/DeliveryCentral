@@ -62,7 +62,7 @@ export class SpcService {
       }),
       this.prisma.timesheetEntry.findMany({
         where: { projectId, date: { gte: weekStart0, lte: weekEnd } },
-        select: { hours: true, date: true, assignmentId: true },
+        select: { hours: true, date: true, positionId: true },
       }),
       this.prisma.projectVendorEngagement.findMany({
         where: { projectId },
