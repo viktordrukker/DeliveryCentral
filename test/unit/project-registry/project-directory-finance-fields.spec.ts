@@ -9,7 +9,6 @@
 import { Prisma } from '@prisma/client';
 
 import { ProjectDirectoryQueryService } from '@src/modules/project-registry/application/project-directory-query.service';
-import { createSeededInMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/create-seeded-in-memory-project-assignment.repository';
 import { createSeededInMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/create-seeded-in-memory-project.repository';
 import { InMemoryProjectExternalLinkRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project-external-link.repository';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
@@ -29,9 +28,15 @@ interface FakeOpenPositionCount {
   count: number;
 }
 
+interface FakeAssignmentCount {
+  projectId: string;
+  count: number;
+}
+
 function buildPrismaStub(seed: {
   budgets?: FakeBudget[];
   openPositions?: FakeOpenPositionCount[];
+  assignments?: FakeAssignmentCount[];
 }): PrismaService {
   const projectBudget = {
     findMany: async (q: {
@@ -48,14 +53,23 @@ function buildPrismaStub(seed: {
       return rows;
     },
   };
+  // LEAN: service issues two distinct groupBy calls on ProjectPosition —
+  //   1) assignment count       → fillStatus IN [BOOKED, ONBOARDING, ASSIGNED, ON_HOLD]
+  //   2) openPositionsCount     → fillStatus = 'OPEN'
+  // Disambiguate by the shape of `where.fillStatus`.
   const projectPosition = {
     groupBy: async (q: {
       by: ['projectId'];
-      where: { projectId: { in: string[] }; fillStatus: 'OPEN' };
+      where: {
+        projectId: { in: string[] };
+        fillStatus: 'OPEN' | { in: readonly string[] };
+      };
       _count: { _all: true };
     }): Promise<Array<{ projectId: string; _count: { _all: number } }>> => {
       const requested = new Set(q.where.projectId.in);
-      return (seed.openPositions ?? [])
+      const isOpenOnly = q.where.fillStatus === 'OPEN';
+      const source = isOpenOnly ? (seed.openPositions ?? []) : (seed.assignments ?? []);
+      return source
         .filter((row) => requested.has(row.projectId))
         .map((row) => ({ projectId: row.projectId, _count: { _all: row.count } }));
     },
@@ -67,7 +81,6 @@ function buildService(prisma: PrismaService): ProjectDirectoryQueryService {
   return new ProjectDirectoryQueryService(
     createSeededInMemoryProjectRepository(),
     new InMemoryProjectExternalLinkRepository([]),
-    createSeededInMemoryProjectAssignmentRepository(),
     prisma,
   );
 }
@@ -199,7 +212,6 @@ describe('W2-07 — ProjectDirectoryQueryService finance fields', () => {
     const service = new ProjectDirectoryQueryService(
       createSeededInMemoryProjectRepository(),
       new InMemoryProjectExternalLinkRepository([]),
-      createSeededInMemoryProjectAssignmentRepository(),
       // no prisma
     );
     const result = await service.execute({});
@@ -207,6 +219,8 @@ describe('W2-07 — ProjectDirectoryQueryService finance fields', () => {
       expect(item.cpi).toBeNull();
       expect(item.budgetStatus).toBe('UNSET');
       expect(item.openPositionsCount).toBe(0);
+      // LEAN: without prisma, assignment count also defaults to 0.
+      expect(item.assignmentCount).toBe(0);
     }
   });
 });

@@ -4,10 +4,21 @@ import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 
 import { AppModule } from '@src/app.module';
-import { AssignmentStatus } from '@src/modules/assignments/domain/value-objects/assignment-status';
-import { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { CloseProjectService } from '@src/modules/project-registry/application/close-project.service';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
+
+/**
+ * LEAN: CloseProjectService now consults ProjectPosition (canonical) for the
+ * "active assignments still exist" gate. The in-memory closure tests no longer
+ * have a legacy ProjectAssignment repository — supply a tiny Prisma stub that
+ * returns the wanted count for `projectPosition.count`.
+ */
+function buildClosurePrismaStub(activeAssignmentCount: number): PrismaService {
+  const projectPosition = {
+    count: async (): Promise<number> => activeAssignmentCount,
+  };
+  return { projectPosition } as unknown as PrismaService;
+}
 import { ProjectLifecycleConflictError } from '@src/modules/project-registry/application/project-lifecycle-conflict.error';
 import { Project } from '@src/modules/project-registry/domain/entities/project.entity';
 import { ProjectId } from '@src/modules/project-registry/domain/value-objects/project-id';
@@ -106,13 +117,12 @@ describe('Close project', () => {
         WorkEvidenceId.from('73000000-0000-0000-0000-000000000002'),
       ),
     ]);
-    const projectAssignmentRepository = new InMemoryProjectAssignmentRepository();
     const appConfig = new AppConfig();
     const service = new CloseProjectService(
       projectRepository,
       workEvidenceRepository,
       personRepository,
-      projectAssignmentRepository,
+      buildClosurePrismaStub(0),
       appConfig,
     );
 
@@ -145,12 +155,11 @@ describe('Close project', () => {
     ]);
     const personRepository = new InMemoryPersonRepository();
     const workEvidenceRepository = new InMemoryWorkEvidenceRepository();
-    const projectAssignmentRepository = new InMemoryProjectAssignmentRepository();
     const service = new CloseProjectService(
       projectRepository,
       workEvidenceRepository,
       personRepository,
-      projectAssignmentRepository,
+      buildClosurePrismaStub(0),
       new AppConfig(),
     );
 
@@ -188,22 +197,12 @@ describe('Close project', () => {
     ]);
     const personRepository = new InMemoryPersonRepository();
     const workEvidenceRepository = new InMemoryWorkEvidenceRepository();
-    const projectAssignmentRepository = new InMemoryProjectAssignmentRepository([
-      ProjectAssignment.create({
-        personId: '71000000-0000-0000-0000-000000000003',
-        projectId: '70000000-0000-0000-0000-000000000003',
-        requestedAt: new Date('2025-06-01T00:00:00.000Z'),
-        requestedByPersonId: 'director-1',
-        staffingRole: 'Engineer',
-        status: AssignmentStatus.booked(),
-        validFrom: new Date('2025-06-01T00:00:00.000Z'),
-      }),
-    ]);
+    // LEAN: one active position blocks closure.
     const service = new CloseProjectService(
       projectRepository,
       workEvidenceRepository,
       personRepository,
-      projectAssignmentRepository,
+      buildClosurePrismaStub(1),
       new AppConfig(),
     );
 

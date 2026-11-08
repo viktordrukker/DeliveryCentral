@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 
-import { ProjectAssignmentRepositoryPort } from '@src/modules/assignments/domain/repositories/project-assignment-repository.port';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { ProjectBudgetStatus, ProjectDirectoryItemDto } from './contracts/project-directory.dto';
@@ -24,12 +23,12 @@ export class ProjectDirectoryQueryService {
   public constructor(
     private readonly projectRepository: ProjectRepositoryPort,
     private readonly projectExternalLinkRepository: ProjectExternalLinkRepositoryPort,
-    private readonly projectAssignmentRepository: ProjectAssignmentRepositoryPort,
     // Optional so in-memory unit tests that construct the service with
     // repository fakes still compile and run. Prisma is only required to
     // populate the W2-07 finance fields (cpi / budgetStatus /
-    // openPositionsCount); without it those fields fall back to their UNSET
-    // defaults.
+    // openPositionsCount) and the lean assignment count; without it
+    // assignment count defaults to 0 and the finance fields fall back to
+    // their UNSET defaults.
     private readonly prisma?: PrismaService,
   ) {}
 
@@ -37,15 +36,28 @@ export class ProjectDirectoryQueryService {
     query: ProjectDirectoryQuery,
   ): Promise<{ items: ProjectDirectoryItemDto[]; totalCount: number }> {
     const source = query.source?.trim().toUpperCase();
-    const [projects, assignments, externalLinks] = await Promise.all([
+    const [projects, externalLinks] = await Promise.all([
       this.projectRepository.findAll(),
-      this.projectAssignmentRepository.findAll(),
       this.projectExternalLinkRepository.findAll(),
     ]);
-    const assignmentCountsByProjectId = assignments.reduce<Map<string, number>>((counts, assignment) => {
-      counts.set(assignment.projectId, (counts.get(assignment.projectId) ?? 0) + 1);
-      return counts;
-    }, new Map());
+    // LEAN: assignment count for the directory grid is the number of
+    // ProjectPosition rows in an active fill state per project. One
+    // groupBy keeps it N+1-free.
+    const assignmentCountsByProjectId = new Map<string, number>();
+    if (this.prisma && projects.length > 0) {
+      const projectIdsForCount = projects.map((p) => p.id);
+      const positionCounts = await this.prisma.projectPosition.groupBy({
+        by: ['projectId'],
+        where: {
+          projectId: { in: projectIdsForCount },
+          fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        },
+        _count: { _all: true },
+      });
+      for (const row of positionCounts) {
+        assignmentCountsByProjectId.set(row.projectId, row._count._all);
+      }
+    }
     const externalLinksByProjectId = externalLinks.reduce<Map<string, typeof externalLinks>>(
       (grouped, link) => {
         const existing = grouped.get(link.projectId.value) ?? [];

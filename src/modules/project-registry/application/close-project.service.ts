@@ -1,7 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
-import { ProjectAssignmentRepositoryPort } from '@src/modules/assignments/domain/repositories/project-assignment-repository.port';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
 import { PersonRepositoryPort } from '@src/modules/organization/domain/repositories/person-repository.port';
 import { PersonId } from '@src/modules/organization/domain/value-objects/person-id';
@@ -9,6 +8,7 @@ import { UndoService } from '@src/modules/undo/application/undo.service';
 import { WorkEvidence } from '@src/modules/work-evidence/domain/entities/work-evidence.entity';
 import { WorkEvidenceRepositoryPort } from '@src/modules/work-evidence/domain/repositories/work-evidence-repository.port';
 import { AppConfig } from '@src/shared/config/app-config';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { Project } from '../domain/entities/project.entity';
 import { ProjectRepositoryPort } from '../domain/repositories/project-repository.port';
@@ -47,7 +47,7 @@ export class CloseProjectService {
     private readonly projectRepository: ProjectRepositoryPort,
     private readonly workEvidenceRepository: WorkEvidenceRepositoryPort,
     private readonly personRepository: PersonRepositoryPort,
-    private readonly projectAssignmentRepository: ProjectAssignmentRepositoryPort,
+    private readonly prisma: PrismaService,
     private readonly appConfig: AppConfig,
     private readonly auditLogger?: AuditLoggerService,
     private readonly notificationEventTranslator?: NotificationEventTranslatorService,
@@ -72,12 +72,23 @@ export class CloseProjectService {
     }
 
     if (project.status === 'ACTIVE') {
-      const activeAssignments = await this.projectAssignmentRepository.findActiveByProjectId(
-        projectId,
-        new Date(),
-      );
+      // LEAN: active assignment count = count of ProjectPosition rows
+      // currently in an active fill state for this project. The legacy
+      // `findActiveByProjectId(projectId, now)` filtered by status in
+      // {BOOKED, ONBOARDING, ASSIGNED, ON_HOLD} AND validFrom<=now AND
+      // (validTo IS NULL OR validTo>=now) — the same shape on the lean
+      // aggregate (activeValidFrom / activeValidTo / fillStatus).
+      const now = new Date();
+      const activeAssignmentCount = await this.prisma.projectPosition.count({
+        where: {
+          projectId,
+          fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+          activeValidFrom: { lte: now },
+          OR: [{ activeValidTo: null }, { activeValidTo: { gte: now } }],
+        },
+      });
 
-      if (activeAssignments.length > 0 && !options.allowActiveAssignmentOverride) {
+      if (activeAssignmentCount > 0 && !options.allowActiveAssignmentOverride) {
         throw new ProjectLifecycleConflictError(
           'Project closure is blocked because active assignments still exist. Use the explicit override flow with a reason to close anyway.',
         );

@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
-
 import { InMemoryProjectRepository } from '../infrastructure/repositories/in-memory/in-memory-project.repository';
 
 export interface ProjectHealthDto {
@@ -18,7 +16,6 @@ export interface ProjectHealthDto {
 export class ProjectHealthQueryService {
   public constructor(
     private readonly projectRepository: InMemoryProjectRepository,
-    private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -31,19 +28,22 @@ export class ProjectHealthQueryService {
 
     const now = new Date();
 
-    // Staffing score (33 pts max)
-    const allAssignments = await this.projectAssignmentRepository.findAll();
-    const approvedAssignments = allAssignments.filter(
-      (a) =>
-        a.projectId === projectId &&
-        ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'].includes(a.status.value),
-    );
-    const assignmentCount = approvedAssignments.length;
+    // LEAN: staffing score derived from ProjectPosition rows in active fill states.
+    const approvedPositions = await this.prisma.projectPosition.findMany({
+      where: {
+        projectId,
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+      },
+      select: { activeAllocationPercent: true },
+    });
+    const assignmentCount = approvedPositions.length;
     let staffingScore = 0;
     if (assignmentCount > 0) {
       const avgAllocation =
-        approvedAssignments.reduce((sum, a) => sum + (a.allocationPercent?.value ?? 0), 0) /
-        assignmentCount;
+        approvedPositions.reduce(
+          (sum, p) => sum + Number(p.activeAllocationPercent ?? 0),
+          0,
+        ) / assignmentCount;
       staffingScore = avgAllocation >= 80 ? 33 : 33;
     }
 
@@ -108,17 +108,21 @@ export class ProjectHealthQueryService {
 
     const now = new Date();
 
-    // 2. ALL approved-state assignments for the requested projects in ONE call.
-    const allAssignments = await this.projectAssignmentRepository.findAll();
+    // 2. LEAN: ALL approved-state positions for the requested projects in ONE call.
+    const allPositions = await this.prisma.projectPosition.findMany({
+      where: {
+        projectId: { in: [...presentIds] },
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+      },
+      select: { projectId: true, activeAllocationPercent: true },
+    });
     const approvedByProject = new Map<string, number>();
     const allocationSumByProject = new Map<string, number>();
-    for (const a of allAssignments) {
-      if (!presentIds.has(a.projectId)) continue;
-      if (!['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'].includes(a.status.value)) continue;
-      approvedByProject.set(a.projectId, (approvedByProject.get(a.projectId) ?? 0) + 1);
+    for (const p of allPositions) {
+      approvedByProject.set(p.projectId, (approvedByProject.get(p.projectId) ?? 0) + 1);
       allocationSumByProject.set(
-        a.projectId,
-        (allocationSumByProject.get(a.projectId) ?? 0) + (a.allocationPercent?.value ?? 0),
+        p.projectId,
+        (allocationSumByProject.get(p.projectId) ?? 0) + Number(p.activeAllocationPercent ?? 0),
       );
     }
 

@@ -39,9 +39,14 @@ export class ProjectClosureReadinessService {
 
     const blockers: string[] = [];
 
-    // 1. Active assignments
-    const activeAssignmentCount = await this.prisma.projectAssignment.count({
-      where: { projectId, status: { in: ['CREATED', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
+    // 1. Active positions (LEAN: ProjectPosition canonical; DRAFT covers
+    // pre-OPEN, OPEN/PROPOSED/BOOKED/ONBOARDING/ASSIGNED/ON_HOLD all block
+    // closure since they represent unresolved demand or active fills).
+    const activeAssignmentCount = await this.prisma.projectPosition.count({
+      where: {
+        projectId,
+        fillStatus: { in: ['DRAFT', 'OPEN', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+      },
     });
     if (activeAssignmentCount > 0) {
       blockers.push(`${activeAssignmentCount} active assignment(s) still open.`);
@@ -89,15 +94,15 @@ export class ProjectClosureReadinessService {
       }
     }
 
-    // 5. Open staffing alerts (key roles unfilled)
+    // 5. Open staffing alerts (key roles unfilled). LEAN: ProjectPosition canonical.
     const rolePlan = await this.prisma.projectRolePlan.findMany({ where: { projectId } });
-    const assignments = await this.prisma.projectAssignment.findMany({
-      where: { projectId, status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
+    const positions = await this.prisma.projectPosition.findMany({
+      where: { projectId, fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
     });
     let openAlertCount = 0;
     for (const plan of rolePlan) {
-      const filled = assignments.filter(
-        (a) => a.staffingRole.toLowerCase() === plan.roleName.toLowerCase(),
+      const filled = positions.filter(
+        (p) => p.role.toLowerCase() === plan.roleName.toLowerCase(),
       ).length;
       if (filled < plan.headcount) openAlertCount++;
     }

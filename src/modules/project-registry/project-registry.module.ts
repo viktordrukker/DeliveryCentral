@@ -10,7 +10,6 @@ import { NotificationEventTranslatorService } from '../notifications/application
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PlatformSettingsModule } from '../platform-settings/platform-settings.module';
 import { CreateProjectAssignmentService } from '../assignments/application/create-project-assignment.service';
-import { InMemoryProjectAssignmentRepository } from '../assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { InMemoryPersonRepository } from '../organization/infrastructure/repositories/in-memory/in-memory-person.repository';
 import { InMemoryOrgUnitRepository } from '../organization/infrastructure/repositories/in-memory/in-memory-org-unit.repository';
 import { InMemoryPersonOrgMembershipRepository } from '../organization/infrastructure/repositories/in-memory/in-memory-person-org-membership.repository';
@@ -135,7 +134,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
         orgUnitRepository: InMemoryOrgUnitRepository,
         personRepository: InMemoryPersonRepository,
         personOrgMembershipRepository: InMemoryPersonOrgMembershipRepository,
-        projectAssignmentRepository: InMemoryProjectAssignmentRepository,
+        prisma: PrismaService,
         createProjectAssignmentService: CreateProjectAssignmentService,
         auditLogger: AuditLoggerService,
       ) =>
@@ -144,7 +143,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
           orgUnitRepository,
           personRepository,
           personOrgMembershipRepository,
-          projectAssignmentRepository,
+          prisma,
           createProjectAssignmentService,
           auditLogger,
         ),
@@ -153,7 +152,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
         InMemoryOrgUnitRepository,
         InMemoryPersonRepository,
         InMemoryPersonOrgMembershipRepository,
-        InMemoryProjectAssignmentRepository,
+        PrismaService,
         CreateProjectAssignmentService,
         AuditLoggerService,
       ],
@@ -221,7 +220,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
         projectRepository: InMemoryProjectRepository,
         workEvidenceRepository: InMemoryWorkEvidenceRepository,
         personRepository: InMemoryPersonRepository,
-        projectAssignmentRepository: InMemoryProjectAssignmentRepository,
+        prisma: PrismaService,
         appConfig: AppConfig,
         auditLogger: AuditLoggerService,
         notificationEventTranslator: NotificationEventTranslatorService,
@@ -231,7 +230,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
           projectRepository,
           workEvidenceRepository,
           personRepository,
-          projectAssignmentRepository,
+          prisma,
           appConfig,
           auditLogger,
           notificationEventTranslator,
@@ -241,7 +240,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
         InMemoryProjectRepository,
         InMemoryWorkEvidenceRepository,
         InMemoryPersonRepository,
-        InMemoryProjectAssignmentRepository,
+        PrismaService,
         AppConfig,
         AuditLoggerService,
         NotificationEventTranslatorService,
@@ -261,19 +260,16 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
       useFactory: (
         projectRepository: InMemoryProjectRepository,
         projectExternalLinkRepository: InMemoryProjectExternalLinkRepository,
-        projectAssignmentRepository: InMemoryProjectAssignmentRepository,
         prisma: PrismaService,
       ) =>
         new ProjectDirectoryQueryService(
           projectRepository,
           projectExternalLinkRepository,
-          projectAssignmentRepository,
           prisma,
         ),
       inject: [
         InMemoryProjectRepository,
         InMemoryProjectExternalLinkRepository,
-        InMemoryProjectAssignmentRepository,
         PrismaService,
       ],
     },
@@ -282,19 +278,16 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
       useFactory: (
         projectRepository: InMemoryProjectRepository,
         projectExternalLinkRepository: InMemoryProjectExternalLinkRepository,
-        projectAssignmentRepository: InMemoryProjectAssignmentRepository,
         prisma: PrismaService,
       ) =>
         new GetProjectByIdService(
           projectRepository,
           projectExternalLinkRepository,
-          projectAssignmentRepository,
           prisma,
         ),
       inject: [
         InMemoryProjectRepository,
         InMemoryProjectExternalLinkRepository,
-        InMemoryProjectAssignmentRepository,
         PrismaService,
       ],
     },
@@ -311,11 +304,10 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
       provide: ProjectDashboardQueryService,
       useFactory: (
         projectRepository: InMemoryProjectRepository,
-        projectAssignmentRepository: InMemoryProjectAssignmentRepository,
         workEvidenceRepository: InMemoryWorkEvidenceRepository,
         prisma: PrismaService,
-      ) => new ProjectDashboardQueryService(projectRepository, projectAssignmentRepository, workEvidenceRepository, prisma),
-      inject: [InMemoryProjectRepository, InMemoryProjectAssignmentRepository, InMemoryWorkEvidenceRepository, PrismaService],
+      ) => new ProjectDashboardQueryService(projectRepository, workEvidenceRepository, prisma),
+      inject: [InMemoryProjectRepository, InMemoryWorkEvidenceRepository, PrismaService],
     },
     {
       provide: UpdateProjectService,
@@ -330,10 +322,9 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
       provide: ProjectHealthQueryService,
       useFactory: (
         projectRepository: InMemoryProjectRepository,
-        projectAssignmentRepository: InMemoryProjectAssignmentRepository,
         prisma: PrismaService,
-      ) => new ProjectHealthQueryService(projectRepository, projectAssignmentRepository, prisma),
-      inject: [InMemoryProjectRepository, InMemoryProjectAssignmentRepository, PrismaService],
+      ) => new ProjectHealthQueryService(projectRepository, prisma),
+      inject: [InMemoryProjectRepository, PrismaService],
     },
     ClientService,
     VendorService,

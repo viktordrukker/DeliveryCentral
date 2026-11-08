@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 
-import { ProjectAssignmentRepositoryPort } from '@src/modules/assignments/domain/repositories/project-assignment-repository.port';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { ProjectExternalLinkRepositoryPort } from '../domain/repositories/project-external-link-repository.port';
 import { ProjectRepositoryPort } from '../domain/repositories/project-repository.port';
@@ -12,7 +11,6 @@ export class GetProjectByIdService {
   public constructor(
     private readonly projectRepository: ProjectRepositoryPort,
     private readonly projectExternalLinkRepository: ProjectExternalLinkRepositoryPort,
-    private readonly projectAssignmentRepository: ProjectAssignmentRepositoryPort,
     private readonly prisma?: PrismaService,
   ) {}
 
@@ -23,9 +21,21 @@ export class GetProjectByIdService {
       return null;
     }
 
-    const [projectLinks, assignments, prismaProject, latestBudget, openPositionsCount] = await Promise.all([
+    // LEAN: assignment count = count of ProjectPosition rows for the project
+    // in active fill states (the legacy `findAll()` filtered by projectId in
+    // the consumer was a proxy for "positions on this project").
+    const [projectLinks, assignmentCount, prismaProject, latestBudget, openPositionsCount] = await Promise.all([
       this.projectExternalLinkRepository.findByProjectId(project.projectId),
-      this.projectAssignmentRepository.findAll(),
+      this.prisma
+        ? this.prisma.projectPosition.count({
+            where: {
+              projectId: project.id,
+              fillStatus: {
+                in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'],
+              },
+            },
+          })
+        : Promise.resolve(0),
       this.prisma
         ? this.prisma.project.findUnique({ where: { id: project.id }, select: { shape: true, hasLiveSpcRates: true } })
         : Promise.resolve(null),
@@ -82,7 +92,7 @@ export class GetProjectByIdService {
     }));
 
     return {
-      assignmentCount: assignments.filter((assignment) => assignment.projectId === project.id).length,
+      assignmentCount,
       budgetStatus,
       cpi,
       description: project.description ?? null,

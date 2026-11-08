@@ -2,12 +2,12 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { CreateProjectAssignmentService } from '@src/modules/assignments/application/create-project-assignment.service';
-import { ProjectAssignmentRepositoryPort } from '@src/modules/assignments/domain/repositories/project-assignment-repository.port';
 import { OrgUnitRepositoryPort } from '@src/modules/organization/domain/repositories/org-unit-repository.port';
 import { PersonOrgMembershipRepositoryPort } from '@src/modules/organization/domain/repositories/person-org-membership-repository.port';
 import { PersonRepositoryPort } from '@src/modules/organization/domain/repositories/person-repository.port';
 import { OrgUnitId } from '@src/modules/organization/domain/value-objects/org-unit-id';
 import { PersonId } from '@src/modules/organization/domain/value-objects/person-id';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { ProjectRepositoryPort } from '../domain/repositories/project-repository.port';
 import { ProjectId } from '../domain/value-objects/project-id';
@@ -59,7 +59,7 @@ export class AssignProjectTeamService {
     private readonly orgUnitRepository: OrgUnitRepositoryPort,
     private readonly personRepository: PersonRepositoryPort,
     private readonly personOrgMembershipRepository: PersonOrgMembershipRepositoryPort,
-    private readonly projectAssignmentRepository: ProjectAssignmentRepositoryPort,
+    private readonly prisma: PrismaService,
     private readonly createProjectAssignmentService: CreateProjectAssignmentService,
     private readonly auditLogger?: AuditLoggerService,
   ) {}
@@ -114,14 +114,23 @@ export class AssignProjectTeamService {
     const membersToCreate: Array<{ personId: string; personName: string }> = [];
 
     for (const member of teamMembers) {
-      const overlaps = await this.projectAssignmentRepository.findOverlappingByPersonAndProject(
-        member.personId,
-        command.projectId,
-        startDate,
-        endDate,
-      );
+      // LEAN: overlap detection on ProjectPosition canonical. A position
+      // "overlaps" the requested window when it is in an active fill state
+      // for the same project+person and its activeValidFrom..activeValidTo
+      // window intersects [startDate, endDate]. End is open when endDate is
+      // undefined.
+      const windowEnd = endDate ?? new Date(8640000000000000);
+      const overlapCount = await this.prisma.projectPosition.count({
+        where: {
+          projectId: command.projectId,
+          activePersonId: member.personId,
+          fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+          activeValidFrom: { lte: windowEnd },
+          OR: [{ activeValidTo: null }, { activeValidTo: { gte: startDate } }],
+        },
+      });
 
-      if (overlaps.length > 0) {
+      if (overlapCount > 0) {
         skippedDuplicates.push({
           personId: member.personId,
           personName: member.personName,

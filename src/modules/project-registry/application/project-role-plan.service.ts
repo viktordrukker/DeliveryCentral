@@ -91,20 +91,30 @@ export class ProjectRolePlanService {
     requiredSkillIds: string[]; source: string; notes: string | null;
     createdAt: Date; updatedAt: Date;
   }>> {
-    const assignments = await this.prisma.projectAssignment.findMany({
-      where: { projectId, status: { in: ['CREATED', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
+    // LEAN: ProjectPosition canonical — derive from current positions.
+    // PROPOSED maps 1:1; CREATED has no analogue on the lean shape (DRAFT
+    // represents pre-OPEN), so we include DRAFT to preserve parity.
+    const positions = await this.prisma.projectPosition.findMany({
+      where: {
+        projectId,
+        fillStatus: { in: ['DRAFT', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+      },
     });
     const vendorEngagements = await this.prisma.projectVendorEngagement.findMany({
       where: { projectId, status: 'ACTIVE' },
     });
 
-    // Group assignments by staffingRole
+    // Group positions by role (was: assignments by staffingRole).
     const roleMap = new Map<string, { count: number; avgAlloc: number }>();
-    for (const a of assignments) {
-      const key = a.staffingRole;
+    for (const p of positions) {
+      const key = p.role;
       const existing = roleMap.get(key) ?? { count: 0, avgAlloc: 0 };
       existing.count++;
-      existing.avgAlloc = ((existing.avgAlloc * (existing.count - 1)) + Number(a.allocationPercent ?? 100)) / existing.count;
+      // For lean: prefer activeAllocationPercent when filled, fall back to
+      // the required allocation for unfilled positions.
+      const alloc = p.activeAllocationPercent ?? p.requiredAllocationPercent;
+      existing.avgAlloc =
+        ((existing.avgAlloc * (existing.count - 1)) + Number(alloc ?? 100)) / existing.count;
       roleMap.set(key, existing);
     }
 
@@ -209,10 +219,11 @@ export class ProjectRolePlanService {
 
   public async getRolePlanVsActual(projectId: string): Promise<RolePlanComparisonResult> {
     const rolePlan = await this.prisma.projectRolePlan.findMany({ where: { projectId } });
-    const assignments = await this.prisma.projectAssignment.findMany({
+    // LEAN: ProjectPosition canonical for filled-position count.
+    const positions = await this.prisma.projectPosition.findMany({
       where: {
         projectId,
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
       },
     });
     const vendorEngagements = await this.prisma.projectVendorEngagement.findMany({
@@ -220,16 +231,16 @@ export class ProjectRolePlanService {
     });
 
     const rows: RolePlanComparisonRow[] = rolePlan.map((plan) => {
-      // Match assignments by staffingRole (case-insensitive)
+      // Match positions by `role` (case-insensitive).
       const roleLC = plan.roleName.toLowerCase();
-      const matchingAssignments = assignments.filter(
-        (a) => a.staffingRole.toLowerCase() === roleLC,
+      const matchingPositions = positions.filter(
+        (p) => p.role.toLowerCase() === roleLC,
       );
       const matchingVendors = vendorEngagements.filter(
         (v) => v.roleSummary.toLowerCase().includes(roleLC),
       );
 
-      const internalFilled = matchingAssignments.length;
+      const internalFilled = matchingPositions.length;
       const vendorFilled = matchingVendors.reduce((sum, v) => sum + v.headcount, 0);
       const totalFilled = internalFilled + vendorFilled;
       const gap = Math.max(0, plan.headcount - totalFilled);

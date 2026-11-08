@@ -12,12 +12,54 @@ import { createSeededInMemoryProjectRepository } from '@src/modules/project-regi
 import { createSeededInMemoryOrgUnitRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/create-seeded-in-memory-org-unit.repository';
 import { createSeededInMemoryPersonOrgMembershipRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/create-seeded-in-memory-person-org-membership.repository';
 import { createSeededInMemoryPersonRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/create-seeded-in-memory-person.repository';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { roleHeaders } from '../helpers/api/auth-headers';
 import { createAppPrismaClient } from '../helpers/db/create-app-prisma-client';
 import { resetPersistenceTestDatabase } from '../helpers/db/reset-persistence-test-database';
 import { seedDemoAssignmentRuntimeData } from '../helpers/db/seed-demo-assignment-runtime-data';
 import { seedDemoOrganizationRuntimeData } from '../helpers/db/seed-demo-organization-runtime-data';
 import { seedDemoProjectRuntimeData } from '../helpers/db/seed-demo-project-runtime-data';
+
+/**
+ * LEAN: in-memory tests construct AssignProjectTeamService directly without a
+ * Prisma database. The service now reads ProjectPosition canonical for overlap
+ * detection — pass a tiny stub that mirrors the legacy in-memory repository's
+ * overlap behaviour onto `projectPosition.count`.
+ */
+function buildOverlapPrismaStub(
+  assignmentRepository: ReturnType<typeof createSeededInMemoryProjectAssignmentRepository>,
+): PrismaService {
+  const projectPosition = {
+    count: async (q: {
+      where: {
+        projectId: string;
+        activePersonId: string;
+        fillStatus: { in: string[] };
+        activeValidFrom: { lte: Date };
+        OR: Array<{ activeValidTo: null } | { activeValidTo: { gte: Date } }>;
+      };
+    }): Promise<number> => {
+      const startDate = q.where.OR.find(
+        (o) =>
+          'activeValidTo' in o &&
+          o.activeValidTo &&
+          typeof o.activeValidTo === 'object' &&
+          'gte' in o.activeValidTo,
+      )?.activeValidTo as { gte: Date } | undefined;
+      const start = startDate?.gte ?? new Date(0);
+      const overlaps = await assignmentRepository.findOverlappingByPersonAndProject(
+        q.where.activePersonId,
+        q.where.projectId,
+        start,
+        q.where.activeValidFrom.lte.getTime() === new Date(8640000000000000).getTime()
+          ? undefined
+          : q.where.activeValidFrom.lte,
+      );
+      return overlaps.length;
+    },
+  };
+  return { projectPosition } as unknown as PrismaService;
+}
 
 describe('Assign project team', () => {
   it('expands the active primary team roster into individual assignments', async () => {
@@ -28,9 +70,10 @@ describe('Assign project team', () => {
       createSeededInMemoryOrgUnitRepository(),
       personRepository,
       createSeededInMemoryPersonOrgMembershipRepository(),
-      assignmentRepository,
+      buildOverlapPrismaStub(assignmentRepository),
       new CreateProjectAssignmentService(
         assignmentRepository,
+        undefined,
         new InMemoryAssignmentReferenceRepository(personRepository),
       ),
     );
@@ -62,9 +105,10 @@ describe('Assign project team', () => {
       createSeededInMemoryOrgUnitRepository(),
       personRepository,
       createSeededInMemoryPersonOrgMembershipRepository(),
-      assignmentRepository,
+      buildOverlapPrismaStub(assignmentRepository),
       new CreateProjectAssignmentService(
         assignmentRepository,
+        undefined,
         new InMemoryAssignmentReferenceRepository(personRepository),
       ),
     );
@@ -100,9 +144,10 @@ describe('Assign project team', () => {
       createSeededInMemoryOrgUnitRepository(),
       personRepository,
       createSeededInMemoryPersonOrgMembershipRepository(),
-      assignmentRepository,
+      buildOverlapPrismaStub(assignmentRepository),
       new CreateProjectAssignmentService(
         assignmentRepository,
+        undefined,
         new InMemoryAssignmentReferenceRepository(personRepository),
       ),
     );

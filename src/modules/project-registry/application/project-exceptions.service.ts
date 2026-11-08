@@ -205,18 +205,25 @@ export class ProjectExceptionsService {
     const cutoff = msDaysAgo(gapDays);
     const now = new Date();
 
-    const assignments = await this.prisma.projectAssignment.findMany({
+    // LEAN: ProjectPosition canonical for active fill.
+    const positions = await this.prisma.projectPosition.findMany({
       where: {
         projectId,
-        validFrom: { lte: now },
-        OR: [{ validTo: null }, { validTo: { gte: now } }],
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activePersonId: { not: null },
+        activeValidFrom: { lte: now },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: now } }],
       },
-      select: { personId: true, person: { select: { displayName: true } } },
+      select: {
+        activePersonId: true,
+        activePerson: { select: { displayName: true } },
+      },
     });
-    if (assignments.length === 0) return [];
+    if (positions.length === 0) return [];
     const uniquePeople = new Map<string, string>();
-    for (const a of assignments) {
-      uniquePeople.set(a.personId, a.person?.displayName ?? a.personId);
+    for (const p of positions) {
+      if (!p.activePersonId) continue;
+      uniquePeople.set(p.activePersonId, p.activePerson?.displayName ?? p.activePersonId);
     }
 
     const recent = await this.prisma.timesheetEntry.findMany({
@@ -256,17 +263,20 @@ export class ProjectExceptionsService {
       where: { projectId },
       select: { id: true, roleName: true, seniorityLevel: true, headcount: true, plannedEndDate: true },
     });
-    const assignments = await this.prisma.projectAssignment.findMany({
+    // LEAN: ProjectPosition canonical — count by `role` for headcount-by-role.
+    const positions = await this.prisma.projectPosition.findMany({
       where: {
         projectId,
-        validFrom: { lte: now },
-        OR: [{ validTo: null }, { validTo: { gte: now } }],
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activePersonId: { not: null },
+        activeValidFrom: { lte: now },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: now } }],
       },
-      select: { staffingRole: true },
+      select: { role: true },
     });
     const filledBy = new Map<string, number>();
-    for (const a of assignments) {
-      const key = (a.staffingRole ?? '').toLowerCase();
+    for (const p of positions) {
+      const key = (p.role ?? '').toLowerCase();
       filledBy.set(key, (filledBy.get(key) ?? 0) + 1);
     }
 

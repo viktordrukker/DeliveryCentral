@@ -1,3 +1,5 @@
+import { randomUUID } from 'crypto';
+
 import { Injectable } from '@nestjs/common';
 import { StaffingRequestStatus } from '@prisma/client';
 
@@ -65,16 +67,18 @@ export class GenerateStaffingRequestsFromPlanService {
       );
       if (!planEntry) { skippedCount++; continue; }
 
-      // Check if an open staffing request already exists for this role on this project
-      const existingRequest = await this.prisma.staffingRequest.findFirst({
+      // LEAN-P3-2 re-point: read canonical ProjectPosition instead of legacy
+      // StaffingRequest. The open/in-review demand states on SR collapse onto
+      // DRAFT/OPEN/PROPOSED on the lean shape (status mapping per LEAN-P0-2).
+      const existingOpenPosition = await this.prisma.projectPosition.findFirst({
         where: {
           projectId,
           role: row.roleName,
-          status: { in: ['DRAFT', 'OPEN', 'IN_REVIEW'] },
+          fillStatus: { in: ['DRAFT', 'OPEN', 'PROPOSED'] },
         },
       });
 
-      if (existingRequest) {
+      if (existingOpenPosition) {
         skippedCount++;
         continue;
       }
@@ -85,15 +89,46 @@ export class GenerateStaffingRequestsFromPlanService {
       const summary = `Auto-generated from role plan: ${row.roleName}${row.seniorityLevel ? ` (${row.seniorityLevel})` : ''}`;
       const skills = planEntry.requiredSkillIds;
 
-      // Create staffing request for each gap unit. Legacy follower SR is
-      // written first so the canonical `ProjectPosition` can carry the SR
-      // id back as `legacyStaffingRequestId` provenance (matches the
-      // Sprint-2 backfill shape and keeps `lean-readiness-check.ts`
-      // probe #2/#5 green for new rows).
+      // LEAN: SoT PR 14b/15 — invert canonical/mirror semantics. Pre-generate
+      // the legacy SR id, write `ProjectPosition` FIRST (canonical) with the
+      // pre-determined `legacyStaffingRequestId`, then write the legacy SR
+      // row using `id: legacyId` as a follower mirror. Mirrors the pattern
+      // established by `InMemoryStaffingRequestService` in SoT PR 15.
       for (let i = 0; i < row.gap; i++) {
-        const created = await this.prisma.$transaction(async (tx) => {
-          const request = await tx.staffingRequest.create({
+        const legacyId = randomUUID();
+        await this.prisma.$transaction(async (tx) => {
+          // LEAN-P1-10 — canonical lean write. One ProjectPosition per
+          // headcount gap unit (fan-out 1:1 because each legacy SR is
+          // also created with `headcountRequired=1` below).
+          await tx.projectPosition.create({
             data: {
+              projectId,
+              role: row.roleName,
+              skills,
+              summary,
+              requiredAllocationPercent: allocationPercent.toString(),
+              startDate,
+              endDate,
+              priority: 'MEDIUM',
+              requestedByPersonId,
+              fillStatus: initialFillStatus,
+              // D-103 actor-audit: thread the role-plan submitter through
+              // as the canonical actor (matches the legacy SR row below).
+              createdByPersonId: requestedByPersonId,
+              updatedByPersonId: requestedByPersonId,
+              // Provenance pointer back to the legacy follower. The
+              // pre-determined `legacyId` ties the two rows together so
+              // `lean-readiness-check.ts` probes #2/#5 stay green and any
+              // downstream consumer joining by legacy id keeps working.
+              legacyStaffingRequestId: legacyId,
+            },
+          });
+
+          // Follower mirror write — kept until SoT PR 16 drops the legacy
+          // StaffingRequest table forward-only.
+          await tx.staffingRequest.create({
+            data: {
+              id: legacyId,
               projectId,
               requestedByPersonId,
               role: row.roleName,
@@ -112,38 +147,9 @@ export class GenerateStaffingRequestsFromPlanService {
               updatedByPersonId: requestedByPersonId,
             },
           });
-
-          // LEAN-P1-10 — canonical lean write. One ProjectPosition per
-          // headcount gap unit (fan-out 1:1 because each legacy SR is
-          // also created with `headcountRequired=1` above).
-          await tx.projectPosition.create({
-            data: {
-              projectId,
-              role: row.roleName,
-              skills,
-              summary,
-              requiredAllocationPercent: allocationPercent.toString(),
-              startDate,
-              endDate,
-              priority: 'MEDIUM',
-              requestedByPersonId,
-              fillStatus: initialFillStatus,
-              // D-103 actor-audit: thread the role-plan submitter through
-              // as the canonical actor (matches the legacy SR row above).
-              createdByPersonId: requestedByPersonId,
-              updatedByPersonId: requestedByPersonId,
-              // Provenance pointer back to the legacy follower so the
-              // readiness probes (`legacyStaffingRequestId` heads) keep
-              // working post-Phase-1. `request.idNew` is the uuid-typed
-              // counterpart of `request.id` (DM-2 dual-id; see audit doc).
-              legacyStaffingRequestId: request.idNew,
-            },
-          });
-
-          return request;
         });
 
-        createdRequestIds.push(created.id);
+        createdRequestIds.push(legacyId);
       }
     }
 

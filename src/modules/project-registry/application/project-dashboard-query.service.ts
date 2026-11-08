@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { InMemoryWorkEvidenceRepository } from '@src/modules/work-evidence/infrastructure/repositories/in-memory/in-memory-work-evidence.repository';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -52,7 +51,6 @@ export interface ProjectDashboardResponseDto {
 export class ProjectDashboardQueryService {
   public constructor(
     private readonly projectRepository: InMemoryProjectRepository,
-    private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
     private readonly workEvidenceRepository: InMemoryWorkEvidenceRepository,
     private readonly prisma: PrismaService,
   ) {}
@@ -75,14 +73,32 @@ export class ProjectDashboardQueryService {
     const dbPeople = await this.prisma.person.findMany({ select: { id: true, displayName: true } });
     const allPeopleById = new Map(dbPeople.map((p) => [p.id, p]));
 
-    const allAssignments = await this.projectAssignmentRepository.findAll();
-    const projectAssignments = allAssignments.filter(
-      (assignment) => assignment.projectId === query.projectId,
-    );
+    // LEAN: ProjectPosition canonical for the assignment surface. Each
+    // position with an activePersonId acts as an assignment row in the DTO;
+    // positions without an active person (DRAFT/OPEN demand) are excluded
+    // from the assignments list (matches legacy behaviour — only Created+
+    // rows had a personId).
+    const projectPositions = await this.prisma.projectPosition.findMany({
+      where: { projectId: query.projectId, activePersonId: { not: null } },
+      select: {
+        id: true,
+        activePersonId: true,
+        role: true,
+        activeAllocationPercent: true,
+        fillStatus: true,
+        activeValidFrom: true,
+        activeValidTo: true,
+      },
+    });
 
-    const activeAssignments = projectAssignments.filter(
-      (assignment) => assignment.isActiveAt(asOf),
-    );
+    const isActiveAt = (pos: { activeValidFrom: Date | null; activeValidTo: Date | null }, at: Date): boolean => {
+      if (!pos.activeValidFrom) return false;
+      if (pos.activeValidFrom > at) return false;
+      if (pos.activeValidTo !== null && pos.activeValidTo < at) return false;
+      return true;
+    };
+
+    const activePositions = projectPositions.filter((p) => isActiveAt(p, asOf));
 
     const allEvidence = await this.workEvidenceRepository.list({ projectId: query.projectId, dateTo: asOf });
 
@@ -96,18 +112,19 @@ export class ProjectDashboardQueryService {
       .filter((item) => (item.occurredOn ?? item.recordedAt) >= cutoff30d)
       .reduce((sum, item) => sum + (item.durationMinutes ?? 0) / 60, 0);
 
-    // Allocation by person (from active assignments)
+    // Allocation by person (from active positions)
     const allocationByPersonMap = new Map<string, { displayName: string; allocationPercent: number }>();
-    for (const assignment of activeAssignments) {
-      const existing = allocationByPersonMap.get(assignment.personId);
-      const person = allPeopleById.get(assignment.personId);
-      const percent = assignment.allocationPercent?.value ?? 0;
+    for (const position of activePositions) {
+      if (!position.activePersonId) continue;
+      const existing = allocationByPersonMap.get(position.activePersonId);
+      const person = allPeopleById.get(position.activePersonId);
+      const percent = Number(position.activeAllocationPercent ?? 0);
       if (existing) {
         existing.allocationPercent += percent;
       } else {
-        allocationByPersonMap.set(assignment.personId, {
+        allocationByPersonMap.set(position.activePersonId, {
           allocationPercent: percent,
-          displayName: person?.displayName ?? assignment.personId,
+          displayName: person?.displayName ?? position.activePersonId,
         });
       }
     }
@@ -119,17 +136,17 @@ export class ProjectDashboardQueryService {
     return {
       allocationByPerson,
       asOf: asOf.toISOString(),
-      assignments: projectAssignments.map((assignment) => {
-        const person = allPeopleById.get(assignment.personId);
+      assignments: projectPositions.map((position) => {
+        const person = position.activePersonId ? allPeopleById.get(position.activePersonId) : undefined;
         return {
-          allocationPercent: assignment.allocationPercent?.value ?? 0,
-          id: assignment.assignmentId.value,
-          personDisplayName: person?.displayName ?? assignment.personId,
-          personId: assignment.personId,
-          staffingRole: assignment.staffingRole,
-          status: assignment.status.value,
-          validFrom: assignment.validFrom.toISOString(),
-          validTo: assignment.validTo?.toISOString() ?? null,
+          allocationPercent: Number(position.activeAllocationPercent ?? 0),
+          id: position.id,
+          personDisplayName: person?.displayName ?? position.activePersonId ?? '',
+          personId: position.activePersonId ?? '',
+          staffingRole: position.role,
+          status: position.fillStatus,
+          validFrom: position.activeValidFrom?.toISOString() ?? '',
+          validTo: position.activeValidTo?.toISOString() ?? null,
         };
       }),
       evidenceByWeek,
@@ -144,8 +161,8 @@ export class ProjectDashboardQueryService {
         status: project.status,
       },
       staffingSummary: {
-        activeAssignmentCount: activeAssignments.length,
-        totalAssignments: projectAssignments.length,
+        activeAssignmentCount: activePositions.length,
+        totalAssignments: projectPositions.length,
         totalEvidenceHoursLast30d: Number(totalEvidenceHoursLast30d.toFixed(2)),
       },
     };
